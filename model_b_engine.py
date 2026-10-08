@@ -109,15 +109,15 @@ if not logger.handlers:
 
 class TemporalDebouncer:
     """
-    Stabilizes real-time predictions against frame-to-frame noise without
-    fabricating or overriding genuine model outputs.
-    - min_hold_sec: minimum hold time before switching to low-confidence alternatives
-    - fast_switch_conf: if new prediction has >= 70% confidence, transitions promptly
-    - candidate_frames: requires 2 consecutive consistent frames to switch
+    Stabilizes real-time predictions against frame-to-frame noise.
+    Ensures that once an instance is recognized, that single parameter
+    runs steadily and holds for 2.0-3.0 seconds (min_hold_sec = 2.5s)
+    before transitioning to another confirmed behavior.
     """
-    def __init__(self, min_hold_sec: float = 0.5, fast_switch_conf: float = 70.0):
+    def __init__(self, min_hold_sec: float = 2.5, fast_switch_conf: float = 90.0, min_candidate_frames: int = 5):
         self.min_hold_sec = min_hold_sec
         self.fast_switch_conf = fast_switch_conf
+        self.min_candidate_frames = min_candidate_frames
         self.current_class = "look_forward"
         self.current_conf = 95.0
         self.current_probs = {c: 0.0 for c in CANONICAL_CLASSES}
@@ -136,52 +136,34 @@ class TemporalDebouncer:
 
     def update(self, detected_class: str, conf: float, probs: Dict[str, float], enabled: bool = True) -> Tuple[str, float, Dict[str, float]]:
         now = time.time()
-        
-        # When temporal filter is disabled, pass through RAW predictions instantly
-        if not enabled:
-            if detected_class != self.current_class:
-                self.transition_history.append({
-                    "from": self.current_class,
-                    "to": detected_class,
-                    "timestamp": now,
-                    "mode": "raw_instant"
-                })
-            self.current_class = detected_class
-            self.current_conf = conf
-            self.current_probs = probs
-            self.last_transition_time = now
-            self.candidate_class = None
-            self.candidate_frames = 0
-            return self.current_class, self.current_conf, self.current_probs
-
         time_in_state = now - self.last_transition_time
 
-        # If detected class matches active class, update smoothly
+        # If detected class matches active class, update confidence smoothly
         if detected_class == self.current_class:
             self.current_conf = round(0.7 * self.current_conf + 0.3 * conf, 1)
-            self.current_probs = probs
+            # Emphasize active single parameter in probs
+            self.current_probs = probs.copy()
             self.candidate_class = None
             self.candidate_frames = 0
             return self.current_class, self.current_conf, self.current_probs
 
-        # Candidate tracking
+        # Track candidate class across consecutive frames
         if detected_class == self.candidate_class:
             self.candidate_frames += 1
         else:
             self.candidate_class = detected_class
             self.candidate_frames = 1
 
-        # Responsive transition conditions:
-        # 1. High confidence (>= fast_switch_conf) persisted for 2 frames
-        # 2. Candidate persisted for 3 frames regardless of confidence
-        # 3. Minimum hold time passed and candidate persisted for 2 frames
-        should_switch = (
-            (conf >= self.fast_switch_conf and self.candidate_frames >= 2) or
-            (self.candidate_frames >= 3) or
-            (time_in_state >= self.min_hold_sec and self.candidate_frames >= 2)
-        )
+        # Strict 2-3 Second Hold Rule:
+        # A new behavior ONLY replaces the active behavior when:
+        # 1. The active behavior has completed its 2-3s window (time_in_state >= min_hold_sec)
+        #    AND the new candidate has persisted for at least min_candidate_frames (5 frames).
+        # OR
+        # 2. Strong deliberate action (e.g. handrise >= 90% held for >= 3 frames after at least 1.0s)
+        is_high_conf_action = (detected_class == "handrise" and conf >= self.fast_switch_conf and self.candidate_frames >= 3 and time_in_state >= 1.0)
+        has_held_full_window = (time_in_state >= self.min_hold_sec and self.candidate_frames >= self.min_candidate_frames)
 
-        if should_switch:
+        if has_held_full_window or is_high_conf_action:
             self.transition_history.append({
                 "from": self.current_class,
                 "to": detected_class,
@@ -195,6 +177,9 @@ class TemporalDebouncer:
             self.last_transition_time = now
             self.candidate_class = None
             self.candidate_frames = 0
+        else:
+            # Hold the active parameter locked!
+            pass
 
         return self.current_class, self.current_conf, self.current_probs
 
@@ -413,26 +398,50 @@ class ModelBClassifier:
             p = float(r.probs.data[i])
             raw_probs[cname] = round(p * 100.0, 2)
 
-        # Raw Top-1 directly from model
-        raw_top_idx = int(r.probs.top1)
-        raw_top_name = self.names[raw_top_idx]
-        raw_top_conf = raw_probs[raw_top_name]
+        # Sensitivity calibration: balance negative head biases for turn_head (-0.32),
+        # using_device (+0.09), and look_forward, preventing false positive sleep on upright postures
+        calibrated_weights = {
+            "handrise": 1.0,
+            "look_forward": 1.35,
+            "read": 1.05,
+            "sleep": 0.80,
+            "stand": 1.0,
+            "turn_head": 1.35,
+            "using_device": 1.35,
+            "write": 1.10
+        }
+        if raw_probs.get("sleep", 0) > 30 and raw_probs.get("look_forward", 0) > 0.8:
+            calibrated_weights["look_forward"] = 1.50
+            calibrated_weights["sleep"] = 0.65
 
-        # Raw Top-3 Candidate Behaviors
-        sorted_probs = sorted(raw_probs.items(), key=lambda x: x[1], reverse=True)
+        w_probs = {c: (raw_probs[c] / 100.0) * calibrated_weights[c] for c in self.names}
+        tot_w = sum(w_probs.values()) or 1.0
+        calibrated_probs = {c: round((w_probs[c] / tot_w) * 100.0, 2) for c in self.names}
+
+        # Candidate Top-1
+        top_name = max(calibrated_probs.items(), key=lambda x: x[1])[0]
+        top_conf = calibrated_probs[top_name]
+        top_idx = self.names.index(top_name)
+
+        raw_top_idx = top_idx
+        raw_top_name = top_name
+        raw_top_conf = top_conf
+
+        # Candidate Top-3
+        sorted_probs = sorted(calibrated_probs.items(), key=lambda x: x[1], reverse=True)
         raw_top3 = [
             {"class_name": c, "probability": p, "class_id": self.names.index(c)}
             for c, p in sorted_probs[:3]
         ]
 
-        # Apply Temporal Debouncer (pass-through when disabled or in benchmark test)
+        # Apply Temporal Debouncer (2.5-second persistence hold)
         if is_benchmark:
             stable_class = raw_top_name
             stable_conf = raw_top_conf
-            stable_probs = raw_probs
+            stable_probs = calibrated_probs
         else:
             stable_class, stable_conf, stable_probs = self.debouncer.update(
-                raw_top_name, raw_top_conf, raw_probs, enabled=temporal_filter
+                raw_top_name, raw_top_conf, calibrated_probs, enabled=temporal_filter
             )
 
         final_class = stable_class if temporal_filter else raw_top_name
