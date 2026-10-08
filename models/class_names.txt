@@ -1,0 +1,8 @@
+handrise
+look_forward
+read
+sleep
+stand
+turn_head
+using_device
+write

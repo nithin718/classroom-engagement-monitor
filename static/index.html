@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Classroom Engagement Portal & Analytics</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Header Navigation -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>AI Classroom Engagement</h1>
+          <span class="brand-sub">Behavioral Analytics & Embedded UART Unit</span>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div id="mode-badge" class="mode-badge simulation">
+          <span class="pulse-dot"></span>
+          <span id="mode-text">SIMULATION MODE</span>
+        </div>
+        <div class="mode-toggle-group">
+          <button id="btn-mode-sim" class="btn-toggle active" onclick="switchMode('SIMULATION')">Simulation</button>
+          <button id="btn-mode-live" class="btn-toggle" onclick="switchMode('LIVE')">Live</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="dashboard-content">
+      <!-- Section 1: Classroom Metric Cards & Controls -->
+      <section class="overview-grid">
+        <!-- Main Engagement Score Card -->
+        <div class="glass-card classroom-score-card">
+          <div class="card-header">
+            <h3>Classroom Engagement Score</h3>
+            <span id="level-badge" class="level-tag level-high">HIGH</span>
+          </div>
+          <div class="score-display">
+            <div class="score-number-wrapper">
+              <span id="classroom-score" class="score-number">85.0</span>
+              <span class="score-max">/100</span>
+            </div>
+            <div class="score-progress-bar">
+              <div id="classroom-progress-fill" class="progress-fill level-high-fill" style="width: 85%;"></div>
+            </div>
+          </div>
+          <div class="aggregate-pills">
+            <div class="pill focused">Focused: <strong id="count-focused">3</strong></div>
+            <div class="pill device">Device: <strong id="count-device">0</strong></div>
+            <div class="pill sleep">Sleep: <strong id="count-sleep">0</strong></div>
+            <div class="pill stand">Stand: <strong id="count-stand">0</strong></div>
+            <div class="pill turn">Turn: <strong id="count-turn">0</strong></div>
+          </div>
+          <!-- UART Packet Telemetry -->
+          <div class="uart-telemetry">
+            <span class="uart-label">TM4C UART PACKET:</span>
+            <code id="uart-packet-output">ENG,85,HIGH,3,0,0</code>
+          </div>
+        </div>
+
+        <!-- Simulation Control Deck -->
+        <div class="glass-card control-deck-card">
+          <div class="card-header">
+            <h3>Simulation Control Deck</h3>
+            <span id="sim-clock" class="sim-timer">00:00</span>
+          </div>
+
+          <div class="control-row scenario-selector">
+            <label for="scenario-select">Scenario:</label>
+            <select id="scenario-select" onchange="changeScenario(this.value)">
+              <option value="normal">Normal Lecture (Active Engagement)</option>
+              <option value="distraction_event">Distraction Event & Recovery</option>
+              <option value="question_session">Teacher Question & Handrise</option>
+              <option value="low_engagement">Low Engagement Fatigue Period</option>
+            </select>
+          </div>
+
+          <div class="control-row action-buttons">
+            <button id="btn-play-pause" class="btn btn-primary" onclick="togglePlayPause()">
+              <span id="play-icon">▶</span> <span id="play-text">Play</span>
+            </button>
+            <button class="btn btn-secondary" onclick="resetSimulation()">↺ Reset</button>
+            <button class="btn btn-secondary" onclick="jumpTime(10)">+10s</button>
+            <button class="btn btn-secondary" onclick="jumpTime(30)">+30s</button>
+          </div>
+
+          <div class="control-row speed-controls">
+            <span class="speed-label">Speed:</span>
+            <div class="speed-pills">
+              <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
+              <button class="speed-btn active" onclick="setSpeed(1.0)">1x</button>
+              <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+              <button class="speed-btn" onclick="setSpeed(5.0)">5x</button>
+              <button class="speed-btn" onclick="setSpeed(10.0)">10x</button>
+            </div>
+          </div>
+
+          <div class="control-row export-buttons">
+            <button class="btn btn-outline" onclick="exportData('json')">📥 Export JSON</button>
+            <button class="btn btn-outline" onclick="exportData('csv')">📊 Export CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Simulated Camera Visualizer -->
+      <section class="camera-schematic-section">
+        <div class="glass-card camera-card">
+          <div class="card-header">
+            <div class="cam-title">
+              <span class="rec-dot"></span>
+              <h3>SIMULATED CLASSROOM CAMERA</h3>
+            </div>
+            <span class="cam-sub">Schematic Multi-Student Spatial Positioning (640x480)</span>
+          </div>
+          
+          <div class="camera-stage" id="camera-stage">
+            <div class="blackboard-indicator">FRONT OF ROOM / BLACKBOARD</div>
+            
+            <!-- Student 01 Bounding Box -->
+            <div id="bbox-s1" class="camera-bbox" style="left: 10%; top: 32%; width: 24%; height: 50%;">
+              <div class="bbox-label">
+                <span class="bbox-id">ID:1</span>
+                <span id="cam-act-1" class="bbox-act">look_forward</span>
+              </div>
+              <div class="bbox-avatar">
+                <span class="avatar-icon">🧑‍🎓</span>
+                <span class="avatar-name">Student 01</span>
+              </div>
+              <div id="cam-score-1" class="bbox-score">100.0</div>
+            </div>
+
+            <!-- Student 02 Bounding Box -->
+            <div id="bbox-s2" class="camera-bbox" style="left: 38%; top: 30%; width: 24%; height: 50%;">
+              <div class="bbox-label">
+                <span class="bbox-id">ID:2</span>
+                <span id="cam-act-2" class="bbox-act">read</span>
+              </div>
+              <div class="bbox-avatar">
+                <span class="avatar-icon">🧑‍🎓</span>
+                <span class="avatar-name">Student 02</span>
+              </div>
+              <div id="cam-score-2" class="bbox-score">85.0</div>
+            </div>
+
+            <!-- Student 03 Bounding Box -->
+            <div id="bbox-s3" class="camera-bbox" style="left: 66%; top: 34%; width: 24%; height: 50%;">
+              <div class="bbox-label">
+                <span class="bbox-id">ID:3</span>
+                <span id="cam-act-3" class="bbox-act">look_forward</span>
+              </div>
+              <div class="bbox-avatar">
+                <span class="avatar-icon">🧑‍🎓</span>
+                <span class="avatar-name">Student 03</span>
+              </div>
+              <div id="cam-score-3" class="bbox-score">100.0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Three Distinct Student Cards -->
+      <section class="students-section">
+        <h2 class="section-title">Individual Student Profiles & Real-Time Monitoring</h2>
+        <div class="student-grid" id="student-cards-container">
+          <!-- Student cards dynamically rendered by app.js -->
+        </div>
+      </section>
+
+      <!-- Section 4: Live History Chart & Transition Events Stream -->
+      <section class="history-events-grid">
+        <!-- Classroom Score Time Series -->
+        <div class="glass-card history-card">
+          <div class="card-header">
+            <h3>Classroom Score Trend</h3>
+            <span class="sub-text">Live 60s Rolling Window</span>
+          </div>
+          <div class="chart-wrapper">
+            <svg id="score-chart" viewBox="0 0 500 180" preserveAspectRatio="none">
+              <!-- Grid lines -->
+              <line x1="0" y1="36" x2="500" y2="36" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>
+              <line x1="0" y1="90" x2="500" y2="90" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>
+              <line x1="0" y1="144" x2="500" y2="144" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4"/>
+              <!-- Threshold Text -->
+              <text x="5" y="32" fill="rgba(255,255,255,0.4)" font-size="10">HIGH (66+)</text>
+              <text x="5" y="86" fill="rgba(255,255,255,0.4)" font-size="10">MED (33-65)</text>
+              <text x="5" y="140" fill="rgba(255,255,255,0.4)" font-size="10">LOW (&lt;33)</text>
+              <!-- Dynamic Path -->
+              <path id="chart-path" d="" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
+              <path id="chart-fill" d="" fill="url(#chart-grad)" opacity="0.2"/>
+              <defs>
+                <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Recent Events & Alerts Feed -->
+        <div class="glass-card events-card">
+          <div class="card-header">
+            <h3>Behavior Events & Threshold Alerts</h3>
+            <span class="badge-count" id="event-count">0 Events</span>
+          </div>
+          
+          <div id="alerts-container" class="alerts-list">
+            <!-- Dynamic alerts -->
+          </div>
+
+          <div id="events-stream" class="events-list">
+            <!-- Dynamic events -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Student Detail Modal -->
+    <div id="student-modal" class="modal-backdrop hidden" onclick="closeModal(event)">
+      <div class="modal-card glass-card" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div id="modal-content">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

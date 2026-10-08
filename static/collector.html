@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model B v2: Ground-Truth Dataset Collector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --bg-card: rgba(17, 24, 39, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-border-hover: rgba(56, 189, 248, 0.3);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-cyan: #38bdf8;
+            --accent-indigo: #6366f1;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-dark) 55%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.85rem 1.75rem;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .navbar-brand h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .badge-cyan { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .nav-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-cyan);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1720px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Viewport & Camera */
+        .viewport-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #020617;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #webcam-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        .crop-guide-overlay {
+            position: absolute;
+            pointer-events: none;
+            border: 2px dashed rgba(56, 189, 248, 0.85);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 6px;
+        }
+        .crop-guide-tag {
+            background: rgba(15, 23, 42, 0.85);
+            color: var(--accent-cyan);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            letter-spacing: 0.04em;
+        }
+        .pip-crop-box {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 130px;
+            height: 130px;
+            border-radius: 8px;
+            border: 2px solid var(--accent-emerald);
+            background: #000;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+        .pip-crop-box canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .pip-label {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            font-size: 0.6rem;
+            background: rgba(16, 185, 129, 0.9);
+            color: #000;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* Config Bar */
+        .config-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .config-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .config-input, .config-select {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            color: #fff;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+        .config-input:focus, .config-select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        /* 8 Ground Truth Action Buttons */
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+        .save-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.9rem 0.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        .save-btn .emoji { font-size: 1.5rem; }
+        .save-btn .key-hint {
+            position: absolute;
+            top: 5px;
+            right: 6px;
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+        .save-btn .count-tag {
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .save-btn:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .save-btn:active {
+            transform: scale(0.96);
+        }
+        .btn-handrise:hover { border-color: #3b82f6; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25); }
+        .btn-look_forward:hover { border-color: #38bdf8; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25); }
+        .btn-read:hover { border-color: #10b981; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25); }
+        .btn-sleep:hover { border-color: #8b5cf6; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25); }
+        .btn-stand:hover { border-color: #f59e0b; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25); }
+        .btn-turn_head:hover { border-color: #f97316; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.25); }
+        .btn-using_device {
+            border-color: rgba(244, 63, 94, 0.3);
+            background: rgba(244, 63, 94, 0.05);
+        }
+        .btn-using_device:hover {
+            border-color: #f43f5e;
+            box-shadow: 0 4px 20px rgba(244, 63, 94, 0.35);
+            background: rgba(244, 63, 94, 0.15);
+        }
+        .btn-write {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        .btn-write:hover {
+            border-color: #10b981;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        /* Action Footer */
+        .action-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-top: 0.5rem;
+        }
+        .btn-delete-last {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-delete-last:hover {
+            background: rgba(244, 63, 94, 0.3);
+            color: #fff;
+        }
+        .btn-camera {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-camera:hover {
+            background: rgba(56, 189, 248, 0.25);
+            color: #fff;
+        }
+
+        /* Sidebar Panels */
+        .counts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        .count-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+        }
+        .count-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+        .count-name { font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+        .count-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #fff; }
+        .progress-bar-bg {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+        .progress-bar-fill.target-met {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        /* Operations Buttons */
+        .ops-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.65rem;
+        }
+        .btn-op {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: #e2e8f0;
+            padding: 0.65rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .btn-op:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .btn-op-primary {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+            color: #a5b4fc;
+        }
+        .btn-op-primary:hover {
+            background: rgba(99, 102, 241, 0.35);
+            color: #fff;
+        }
+
+        /* Recent Samples Strip */
+        .recent-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            max-height: 170px;
+            overflow-y: auto;
+        }
+        .recent-item {
+            position: relative;
+            aspect-ratio: 1/1;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            background: #000;
+        }
+        .recent-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .recent-badge {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            right: 2px;
+            background: rgba(0,0,0,0.75);
+            font-size: 0.55rem;
+            padding: 1px 3px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: #fff;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--accent-cyan);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 100;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .pulse-capture {
+            animation: captureFlash 0.25s ease-out;
+        }
+        @keyframes captureFlash {
+            0% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0.8); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <h1>Model B v2: Ground-Truth Dataset Collector</h1>
+            <span class="badge badge-cyan">Real-Webcam Domain Adaptation</span>
+            <span class="badge badge-amber" id="target-badge">Target: 150–250 / class</span>
+        </div>
+        <nav class="nav-tabs">
+            <a href="/model" class="nav-btn">Live Classifier</a>
+            <a href="/rapid-collect" class="nav-btn" style="background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.3);font-weight:600;">⚡ Rapid Collector</a>
+            <a href="/collect" class="nav-btn active">Dataset Collector</a>
+            <a href="/portal" class="nav-btn">Teacher Portal</a>
+            <a href="/simulation" class="nav-btn">Simulation</a>
+        </nav>
+    </header>
+
+    <div class="main-layout">
+        <!-- Left: Webcam, Live Mode B Preview, and 8 Buttons -->
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>📷</span> Real-Time Webcam Framing & Mode B Crop (Head + Torso + Hands)
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-camera" id="btn-toggle-cam" onclick="toggleCamera()">Start Camera</button>
+                    </div>
+                </div>
+
+                <!-- Viewport with Crop Overlay -->
+                <div class="viewport-box" id="viewport-box">
+                    <video id="webcam-video" autoplay playsinline muted></video>
+                    
+                    <!-- Mode B Guide Box overlay (matches model_b_engine.py exact coordinates) -->
+                    <div class="crop-guide-overlay" id="crop-guide">
+                        <div class="crop-guide-tag">Mode B Crop: 224&times;224</div>
+                    </div>
+
+                    <!-- Live PiP Canvas showing exact crop fed into Model B -->
+                    <div class="pip-crop-box">
+                        <canvas id="pip-canvas" width="224" height="224"></canvas>
+                        <div class="pip-label">224&times;224 INPUT</div>
+                    </div>
+                </div>
+
+                <!-- Collection Controls & Session Config -->
+                <div class="config-bar">
+                    <div class="config-item">
+                        <label class="config-label">Session ID</label>
+                        <input type="text" class="config-input" id="session-id" value="session_1" placeholder="e.g. session_1">
+                    </div>
+                    <div class="config-item">
+                        <label class="config-label">Subject ID</label>
+                        <input type="text" class="config-input" id="person-id" value="student_1" placeholder="e.g. student_1">
+                    </div>
+                    <div class="config-item">
+                        <label class="config-label">Crop Framing</label>
+                        <select class="config-select" id="crop-mode" onchange="updateCropGuide()">
+                            <option value="mode_b" selected>Mode B: Head + Torso + Hands (Recommended)</option>
+                            <option value="mode_a">Mode A: Full Frame (100%)</option>
+                            <option value="mode_c">Mode C: Wider Upper Body</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label class="config-label">Capture Mode</label>
+                        <select class="config-select" id="capture-mode">
+                            <option value="single">Single Frame Click</option>
+                            <option value="burst5">Burst: 5 frames (300ms interval)</option>
+                            <option value="burst10">Burst: 10 frames (300ms interval)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 8 Ground Truth Save Buttons -->
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.05em;">
+                        Click Button or Press Keys 1–8 to Save Current Labeled Frame:
+                    </div>
+                    <div class="buttons-grid">
+                        <button class="save-btn btn-handrise" onclick="saveGroundTruth('handrise')">
+                            <span class="key-hint">[1]</span>
+                            <span class="emoji">✋</span>
+                            <span>HANDRISE</span>
+                            <span class="count-tag" id="tag-handrise">0</span>
+                        </button>
+                        <button class="save-btn btn-look_forward" onclick="saveGroundTruth('look_forward')">
+                            <span class="key-hint">[2]</span>
+                            <span class="emoji">👀</span>
+                            <span>LOOK_FORWARD</span>
+                            <span class="count-tag" id="tag-look_forward">0</span>
+                        </button>
+                        <button class="save-btn btn-read" onclick="saveGroundTruth('read')">
+                            <span class="key-hint">[3]</span>
+                            <span class="emoji">📖</span>
+                            <span>READ</span>
+                            <span class="count-tag" id="tag-read">0</span>
+                        </button>
+                        <button class="save-btn btn-sleep" onclick="saveGroundTruth('sleep')">
+                            <span class="key-hint">[4]</span>
+                            <span class="emoji">😴</span>
+                            <span>SLEEP</span>
+                            <span class="count-tag" id="tag-sleep">0</span>
+                        </button>
+                        <button class="save-btn btn-stand" onclick="saveGroundTruth('stand')">
+                            <span class="key-hint">[5]</span>
+                            <span class="emoji">🚶</span>
+                            <span>STAND</span>
+                            <span class="count-tag" id="tag-stand">0</span>
+                        </button>
+                        <button class="save-btn btn-turn_head" onclick="saveGroundTruth('turn_head')">
+                            <span class="key-hint">[6]</span>
+                            <span class="emoji">🔄</span>
+                            <span>TURN_HEAD</span>
+                            <span class="count-tag" id="tag-turn_head">0</span>
+                        </button>
+                        <button class="save-btn btn-using_device" onclick="saveGroundTruth('using_device')">
+                            <span class="key-hint">[7]</span>
+                            <span class="emoji">📱</span>
+                            <span>USING_DEVICE</span>
+                            <span class="count-tag" id="tag-using_device">0</span>
+                        </button>
+                        <button class="save-btn btn-write" onclick="saveGroundTruth('write')">
+                            <span class="key-hint">[8]</span>
+                            <span class="emoji">✍️</span>
+                            <span>WRITE</span>
+                            <span class="count-tag" id="tag-write">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Footer Operations -->
+                <div class="action-footer">
+                    <button class="btn-delete-last" onclick="deleteLastSample()">
+                        <span>🗑️</span> DELETE LAST SAMPLE (Undo)
+                    </button>
+                    <div style="font-size:0.8rem; color:var(--text-muted);" id="status-text">
+                        Camera ready. Hold pose and click or press 1–8.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Class Counts, Split Tools, Evaluation & Gallery -->
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <!-- Class Balance Tracker -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 Class Counts & Balance</div>
+                    <span class="badge badge-cyan" id="total-count-badge">Total: 0</span>
+                </div>
+                <div class="counts-list" id="counts-container">
+                    <!-- Generated via JS -->
+                </div>
+            </div>
+
+            <!-- Pipeline Operations: Split & Evaluate Baseline -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Split & Evaluation Pipeline</div>
+                </div>
+                <div class="ops-grid">
+                    <button class="btn-op btn-op-primary" onclick="createLeakageSafeSplit()">
+                        🔀 Create Split (70/15/15)
+                    </button>
+                    <button class="btn-op" onclick="runV1BaselineEval()">
+                        🧪 Run V1 Baseline
+                    </button>
+                </div>
+                <div id="eval-summary" style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+                    Phase 4: Run split after capturing diverse samples.<br>
+                    Phase 5: Baseline evaluates Model_B_best.pt on test set.
+                </div>
+            </div>
+
+            <!-- Recent Captures Strip -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🖼️ Recent Captures</div>
+                    <span style="font-size:0.75rem; color:var(--text-muted);" id="recent-count-text">0 items</span>
+                </div>
+                <div class="recent-grid" id="recent-grid">
+                    <div style="grid-column: span 4; text-align:center; font-size:0.75rem; color:var(--text-muted); padding:1rem;">
+                        No samples collected yet.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for capturing video frames -->
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+    <div id="toast">Sample saved!</div>
+
+    <script>
+        const CANONICAL_CLASSES = [
+            { id: 0, name: 'handrise', emoji: '✋', color: '#3b82f6' },
+            { id: 1, name: 'look_forward', emoji: '👀', color: '#38bdf8' },
+            { id: 2, name: 'read', emoji: '📖', color: '#10b981' },
+            { id: 3, name: 'sleep', emoji: '😴', color: '#8b5cf6' },
+            { id: 4, name: 'stand', emoji: '🚶', color: '#f59e0b' },
+            { id: 5, name: 'turn_head', emoji: '🔄', color: '#f97316' },
+            { id: 6, name: 'using_device', emoji: '📱', color: '#f43f5e' },
+            { id: 7, name: 'write', emoji: '✍️', color: '#10b981' }
+        ];
+
+        let videoStream = null;
+        const videoEl = document.getElementById('webcam-video');
+        const pipCanvas = document.getElementById('pip-canvas');
+        const pipCtx = pipCanvas.getContext('2d');
+        const captureCanvas = document.getElementById('capture-canvas');
+        const captureCtx = captureCanvas.getContext('2d');
+        const cropGuide = document.getElementById('crop-guide');
+
+        let isBurstActive = false;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderClassCountsTable({});
+            fetchStats();
+            setupKeyboardShortcuts();
+            startCamera();
+            requestAnimationFrame(drawPipLoop);
+        });
+
+        function updateCropGuide() {
+            const mode = document.getElementById('crop-mode').value;
+            if (mode === 'mode_b') {
+                cropGuide.style.left = '15%';
+                cropGuide.style.width = '70%';
+                cropGuide.style.top = '8%';
+                cropGuide.style.height = '88%';
+                cropGuide.querySelector('.crop-guide-tag').innerText = 'Mode B Crop: 224×224 (Head + Torso + Hands)';
+            } else if (mode === 'mode_c') {
+                cropGuide.style.left = '8%';
+                cropGuide.style.width = '84%';
+                cropGuide.style.top = '4%';
+                cropGuide.style.height = '92%';
+                cropGuide.querySelector('.crop-guide-tag').innerText = 'Mode C Crop: 224×224 (Wider Upper Body)';
+            } else {
+                cropGuide.style.left = '0%';
+                cropGuide.style.width = '100%';
+                cropGuide.style.top = '0%';
+                cropGuide.style.height = '100%';
+                cropGuide.querySelector('.crop-guide-tag').innerText = 'Mode A: Full Frame';
+            }
+        }
+
+        async function startCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+                    audio: false
+                });
+                videoEl.srcObject = videoStream;
+                videoEl.style.display = 'block';
+                document.getElementById('btn-toggle-cam').innerText = 'Stop Camera';
+                updateCropGuide();
+            } catch (err) {
+                console.error('Camera access error:', err);
+                showToast('Camera error: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(t => t.stop());
+                videoStream = null;
+                videoEl.style.display = 'none';
+                document.getElementById('btn-toggle-cam').innerText = 'Start Camera';
+            }
+        }
+
+        function toggleCamera() {
+            if (videoStream) stopCamera();
+            else startCamera();
+        }
+
+        function drawPipLoop() {
+            if (videoEl && videoEl.readyState === 4) {
+                const vw = videoEl.videoWidth;
+                const vh = videoEl.videoHeight;
+                const mode = document.getElementById('crop-mode').value;
+
+                let x1 = 0, y1 = 0, cw = vw, ch = vh;
+                if (mode === 'mode_b') {
+                    x1 = vw * 0.15;
+                    y1 = vh * 0.08;
+                    cw = vw * 0.70;
+                    ch = vh * 0.88;
+                } else if (mode === 'mode_c') {
+                    x1 = vw * 0.08;
+                    y1 = vh * 0.04;
+                    cw = vw * 0.84;
+                    ch = vh * 0.92;
+                }
+
+                pipCtx.save();
+                pipCtx.drawImage(videoEl, x1, y1, cw, ch, 0, 0, 224, 224);
+                pipCtx.restore();
+            }
+            requestAnimationFrame(drawPipLoop);
+        }
+
+        function setupKeyboardShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                if (['input', 'textarea', 'select'].includes(document.activeElement.tagName.toLowerCase())) return;
+                const keyMap = {
+                    '1': 'handrise',
+                    '2': 'look_forward',
+                    '3': 'read',
+                    '4': 'sleep',
+                    '5': 'stand',
+                    '6': 'turn_head',
+                    '7': 'using_device',
+                    '8': 'write'
+                };
+                if (keyMap[e.key]) {
+                    e.preventDefault();
+                    saveGroundTruth(keyMap[e.key]);
+                } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault();
+                    deleteLastSample();
+                }
+            });
+        }
+
+        function getFrameBase64() {
+            if (!videoEl || videoEl.readyState < 2) return null;
+            captureCanvas.width = videoEl.videoWidth || 1280;
+            captureCanvas.height = videoEl.videoHeight || 720;
+            captureCtx.drawImage(videoEl, 0, 0, captureCanvas.width, captureCanvas.height);
+            return captureCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        async function saveGroundTruth(className) {
+            if (isBurstActive) return;
+            const captureMode = document.getElementById('capture-mode').value;
+            const count = captureMode === 'burst10' ? 10 : (captureMode === 'burst5' ? 5 : 1);
+
+            if (count > 1) {
+                isBurstActive = true;
+                let captured = 0;
+                document.getElementById('status-text').innerText = 'Burst capture (' + className + '): 0 / ' + count + '...';
+                
+                const interval = setInterval(async () => {
+                    await captureSingleSample(className);
+                    captured++;
+                    document.getElementById('status-text').innerText = 'Burst capture (' + className + '): ' + captured + ' / ' + count + '...';
+                    if (captured >= count) {
+                        clearInterval(interval);
+                        isBurstActive = false;
+                        document.getElementById('status-text').innerText = 'Captured ' + count + ' samples for ' + className + '!';
+                        fetchStats();
+                    }
+                }, 300);
+            } else {
+                await captureSingleSample(className);
+                fetchStats();
+            }
+        }
+
+        async function captureSingleSample(className) {
+            const b64 = getFrameBase64();
+            if (!b64) {
+                showToast('Cannot capture: Webcam not streaming');
+                return;
+            }
+
+            const payload = {
+                image_base64: b64,
+                label: className,
+                crop_mode: document.getElementById('crop-mode').value,
+                session_id: document.getElementById('session-id').value.trim() || 'session_1',
+                person_id: document.getElementById('person-id').value.trim() || 'student_1'
+            };
+
+            const viewport = document.getElementById('viewport-box');
+            viewport.classList.add('pulse-capture');
+            setTimeout(() => viewport.classList.remove('pulse-capture'), 250);
+
+            try {
+                const res = await fetch('/api/dataset/collect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Saved: ' + className.toUpperCase());
+                    updateCountsDisplay(data.class_counts, data.total_samples);
+                } else {
+                    showToast('Save failed: ' + (data.detail || 'Error'));
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error saving sample');
+            }
+        }
+
+        async function deleteLastSample() {
+            try {
+                const res = await fetch('/api/dataset/delete-last', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok && data.status === 'deleted') {
+                    showToast('Deleted last sample: ' + data.label);
+                    fetchStats();
+                } else {
+                    showToast(data.message || 'No samples to delete');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to delete last sample');
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/dataset/stats');
+                const data = await res.json();
+                if (res.ok) {
+                    updateCountsDisplay(data.class_counts, data.total_samples);
+                    renderRecentGallery(data.recent_samples || []);
+                    if (data.split_info) {
+                        document.getElementById('eval-summary').innerHTML = 
+                            'Split active (' + data.split_info.split_timestamp.slice(0,16) + '):<br>' +
+                            'Train: <b>' + data.split_info.train_count + '</b> | Val: <b>' + data.split_info.val_count + '</b> | Test: <b>' + data.split_info.test_count + '</b>';
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            }
+        }
+
+        function updateCountsDisplay(counts, total) {
+            document.getElementById('total-count-badge').innerText = 'Total: ' + (total || 0);
+            renderClassCountsTable(counts);
+
+            CANONICAL_CLASSES.forEach(c => {
+                const val = counts[c.name] || 0;
+                const tagEl = document.getElementById('tag-' + c.name);
+                if (tagEl) tagEl.innerText = val;
+            });
+        }
+
+        function renderClassCountsTable(counts) {
+            const container = document.getElementById('counts-container');
+            container.innerHTML = '';
+            const targetMin = 150;
+
+            CANONICAL_CLASSES.forEach(c => {
+                const val = counts[c.name] || 0;
+                const pct = Math.min(100, Math.round((val / targetMin) * 100));
+                const targetMet = val >= targetMin;
+
+                const row = document.createElement('div');
+                row.className = 'count-row';
+                row.innerHTML = `
+                    <div class="count-meta">
+                        <span class="count-name">${c.emoji} ${c.name}</span>
+                        <span class="count-val">${val} / ${targetMin} <span style="font-size:0.7rem; color:var(--text-muted);">(${pct}%)</span></span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill ${targetMet ? 'target-met' : ''}" style="width: ${pct}%;"></div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderRecentGallery(samples) {
+            const grid = document.getElementById('recent-grid');
+            document.getElementById('recent-count-text').innerText = samples.length + ' items';
+            if (samples.length === 0) {
+                grid.innerHTML = '<div style="grid-column: span 4; text-align:center; font-size:0.75rem; color:var(--text-muted); padding:1rem;">No samples collected yet.</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            samples.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'recent-item';
+                const imgSrc = '/' + s.crop_path;
+                item.innerHTML = `
+                    <img src="${imgSrc}" onerror="this.style.display='none'" alt="crop" />
+                    <div class="recent-badge">${s.label}</div>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        async function createLeakageSafeSplit() {
+            if (!confirm('Run leakage-safe train/val/test split (70% train, 15% val, 15% test)?')) return;
+            try {
+                const res = await fetch('/api/dataset/split', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ strategy: 'session_aware', train_ratio: 0.70, val_ratio: 0.15, test_ratio: 0.15 })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    showToast('Dataset split successfully created!');
+                    fetchStats();
+                } else {
+                    showToast('Split failed: ' + (data.message || 'Error'));
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error creating split');
+            }
+        }
+
+        async function runV1BaselineEval() {
+            document.getElementById('status-text').innerText = 'Running V1 baseline evaluation on test split...';
+            showToast('Evaluating Model B V1 baseline...');
+            try {
+                const res = await fetch('/api/dataset/evaluate-v1-baseline?split=test', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('V1 Baseline Accuracy: ' + (data.accuracy * 100).toFixed(1) + '% | Macro-F1: ' + data.macro_f1.toFixed(4));
+                    document.getElementById('eval-summary').innerHTML = `
+                        <b>V1 Baseline Results:</b><br>
+                        Accuracy: <b>${(data.accuracy * 100).toFixed(1)}%</b> | Macro-F1: <b>${data.macro_f1.toFixed(4)}</b><br>
+                        using_device F1: <b>${(data.per_class.using_device.f1_score).toFixed(4)}</b> | write F1: <b>${(data.per_class.write.f1_score).toFixed(4)}</b><br>
+                        <a href="/${data.confusion_matrix_plot}" target="_blank" style="color:var(--accent-cyan); text-decoration:underline;">View Confusion Matrix Plot</a>
+                    `;
+                    document.getElementById('status-text').innerText = 'V1 baseline evaluation complete.';
+                } else {
+                    showToast('Baseline eval failed: ' + (data.detail || data.message || 'Error'));
+                    document.getElementById('status-text').innerText = 'Baseline eval failed.';
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error running baseline eval');
+                document.getElementById('status-text').innerText = 'Error running baseline eval.';
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 2500);
+        }
+    </script>
+</body>
+</html>

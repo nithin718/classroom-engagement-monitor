@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model B V2 — Rapid Dataset Collector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --bg-card: rgba(17, 24, 39, 0.85);
+            --card-border: rgba(255,255,255,0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-cyan: #38bdf8;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #a855f7;
+            --accent-indigo: #6366f1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-dark) 55%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: rgba(15,23,42,0.9);
+            border-bottom: 1px solid var(--card-border);
+        }
+        .header h1 {
+            font-size: 1.15rem; font-weight: 700;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header .nav-links {
+            display: flex; gap: 0.5rem;
+        }
+        .header .nav-link {
+            color: var(--text-muted); text-decoration: none; font-size: 0.8rem;
+            padding: 0.35rem 0.75rem; border-radius: 6px; border: 1px solid var(--card-border);
+            transition: all 0.2s;
+        }
+        .header .nav-link:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+        /* Prominent Status Banner */
+        .status-banner {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.65rem 1.5rem; background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .status-item {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .status-item .label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-item .val {
+            font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1rem;
+            padding: 2px 8px; border-radius: 6px;
+        }
+        .class-badge {
+            background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan);
+            border: 1px solid rgba(56, 189, 248, 0.4); text-transform: uppercase;
+        }
+
+        .main {
+            display: grid; grid-template-columns: 1fr 340px; gap: 1rem;
+            padding: 1rem 1.5rem; flex: 1;
+        }
+        .left-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+        
+        .video-container {
+            position: relative; flex: 1; min-height: 420px; background: #000;
+            border-radius: 12px; overflow: hidden;
+            border: 2px solid var(--card-border);
+        }
+        .video-container video { width: 100%; height: 100%; object-fit: cover; }
+        .video-container .crop-overlay {
+            position: absolute; border: 2px dashed rgba(56,189,248,0.7);
+            background: rgba(56,189,248,0.06); pointer-events: none;
+            transition: all 0.15s ease-out;
+        }
+        .video-container .crop-label {
+            position: absolute; top: -22px; left: 0;
+            background: rgba(56,189,248,0.85); color: #04070d;
+            font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .video-container .recording-indicator {
+            position: absolute; top: 12px; right: 12px;
+            display: none; align-items: center; gap: 6px;
+            background: rgba(239,68,68,0.9); padding: 5px 14px;
+            border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+            box-shadow: 0 0 15px rgba(239,68,68,0.5);
+        }
+        .video-container .recording-indicator .dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #fff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Class Selection Buttons */
+        .class-selector-row {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.4rem;
+        }
+        .class-btn {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--card-border);
+            color: var(--text-muted); padding: 0.5rem 0.3rem; border-radius: 8px;
+            font-size: 0.72rem; font-weight: 600; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            transition: all 0.15s;
+        }
+        .class-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .class-btn.active {
+            color: #fff; font-weight: 700;
+            box-shadow: 0 0 12px rgba(56,189,248,0.3);
+            border-width: 2px;
+        }
+        .class-btn .count {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+            padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,0.3);
+        }
+        .class-btn .key-hint {
+            font-size: 0.6rem; color: var(--text-muted); opacity: 0.7;
+        }
+
+        /* Controls Row */
+        .capture-controls {
+            display: flex; gap: 0.5rem; align-items: center;
+            background: var(--bg-card); padding: 0.6rem 0.9rem;
+            border-radius: 10px; border: 1px solid var(--card-border);
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.55rem 1rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; border: none; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-capture {
+            background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+            box-shadow: 0 2px 10px rgba(16,185,129,0.3);
+        }
+        .btn-capture:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-auto {
+            background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+        }
+        .btn-auto.active {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 0 15px rgba(239,68,68,0.4);
+        }
+        .btn-pause {
+            background: rgba(245,158,11,0.15); color: var(--accent-amber);
+            border: 1px solid rgba(245,158,11,0.3);
+        }
+        .btn-pause:hover { background: rgba(245,158,11,0.25); }
+        .btn-undo {
+            background: rgba(255,255,255,0.05); color: var(--text-muted);
+            border: 1px solid var(--card-border);
+        }
+        .btn-undo:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-next {
+            background: rgba(56,189,248,0.15); color: var(--accent-cyan);
+            border: 1px solid rgba(56,189,248,0.3);
+        }
+        .btn-next:hover { background: rgba(56,189,248,0.25); color: #fff; }
+
+        .session-row {
+            display: flex; gap: 0.75rem; align-items: center;
+            background: var(--bg-card); padding: 0.5rem 0.9rem;
+            border-radius: 10px; border: 1px solid var(--card-border);
+            font-size: 0.78rem;
+        }
+        .session-row select {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--card-border);
+            color: var(--text-main); padding: 0.3rem 0.5rem; border-radius: 6px;
+            font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Right Panel */
+        .right-panel { display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; }
+        .card {
+            background: var(--bg-card); border: 1px solid var(--card-border);
+            border-radius: 10px; padding: 0.85rem;
+        }
+        .card h3 {
+            font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem;
+        }
+
+        /* Last Captured Preview */
+        .last-capture-box {
+            display: flex; flex-direction: column; align-items: center;
+            background: #000; border-radius: 8px; padding: 6px; border: 1px solid var(--card-border);
+        }
+        .last-capture-box img {
+            width: 140px; height: 140px; object-fit: cover; border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .last-capture-meta {
+            margin-top: 6px; font-size: 0.7rem; color: var(--text-muted);
+            text-align: center; font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Class Progress Bars */
+        .class-progress { margin-bottom: 0.45rem; }
+        .class-progress .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+        .class-progress .label { font-size: 0.72rem; color: var(--text-muted); }
+        .class-progress .value { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 600; }
+        .progress-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+        .progress-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .fill-green { background: linear-gradient(90deg, #10b981, #34d399); }
+        .fill-amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .fill-rose { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        /* Variation Guidance */
+        .variation-guide {
+            font-size: 0.72rem; color: var(--text-muted); line-height: 1.5;
+            background: rgba(255,255,255,0.02); padding: 0.5rem; border-radius: 6px;
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .toast {
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+            padding: 0.6rem 1.5rem; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <h1>📸 Rapid Dataset Collector</h1>
+        <span style="font-size:0.75rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Model B V2 Deployment Domain</span>
+    </div>
+    <nav class="nav-links">
+        <a href="/model" class="nav-link">⚡ Model B Studio</a>
+        <a href="/collect" class="nav-link">📸 Standard Collector</a>
+        <a href="/portal" class="nav-link">📊 Teacher Portal</a>
+    </nav>
+</header>
+
+<!-- Requirement 11: Prominent Status Header -->
+<div class="status-banner">
+    <div class="status-item">
+        <span class="label">CURRENT CLASS:</span>
+        <span class="val class-badge" id="activeClassBadge">USING_DEVICE</span>
+    </div>
+    <div class="status-item">
+        <span class="label">TARGET:</span>
+        <span class="val" id="targetBadgeVal" style="color:var(--accent-amber)">200</span>
+    </div>
+    <div class="status-item">
+        <span class="label">COLLECTED:</span>
+        <span class="val" id="collectedBadgeVal" style="color:var(--accent-emerald)">0 / 200</span>
+    </div>
+    <div class="status-item">
+        <span class="label">SESSION:</span>
+        <span class="val" id="sessionBadgeVal" style="color:var(--accent-cyan)">1</span>
+    </div>
+    <div class="status-item">
+        <span class="label">TOTAL IMAGES:</span>
+        <span class="val" id="totalBadgeVal" style="color:#fff">0</span>
+    </div>
+</div>
+
+<div class="main">
+    <div class="left-panel">
+        <div class="video-container">
+            <video id="webcam" autoplay playsinline muted></video>
+            <div class="crop-overlay" id="cropOverlay">
+                <div class="crop-label" id="cropLabel">MODE B (HEAD+TORSO+HANDS)</div>
+            </div>
+            <div class="recording-indicator" id="recordingIndicator">
+                <div class="dot"></div> AUTO BURST RECORDING
+            </div>
+        </div>
+
+        <!-- 8 Canonical Classes Selection Row -->
+        <div class="class-selector-row" id="classButtons"></div>
+
+        <!-- Requirement 11 Action Controls: [Capture], [Auto Burst], [Pause], [Undo], [Next Class] -->
+        <div class="capture-controls">
+            <button class="btn btn-capture" id="captureBtn" onclick="captureOne()">
+                📸 Capture (Space)
+            </button>
+            <button class="btn btn-auto" id="autoBtn" onclick="toggleAutoBurst()">
+                ⚡ Auto Burst (A)
+            </button>
+            <button class="btn btn-pause" id="pauseBtn" onclick="pauseAutoBurst()">
+                ⏸ Pause
+            </button>
+            <button class="btn btn-undo" onclick="undoLast()">
+                ↩ Undo (Z)
+            </button>
+            <button class="btn btn-next" onclick="nextClass()">
+                ➡️ Next Class (N)
+            </button>
+
+            <div style="display:flex;align-items:center;gap:0.4rem;margin-left:auto;">
+                <span style="font-size:0.72rem;color:var(--text-muted)">Sampling Interval:</span>
+                <select id="captureInterval" onchange="updateInterval()" style="background:rgba(255,255,255,0.06);border:1px solid var(--card-border);color:var(--text-main);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.75rem;font-family:'JetBrains Mono',monospace;">
+                    <option value="300">300 ms</option>
+                    <option value="500" selected>500 ms (Recommended)</option>
+                    <option value="700">700 ms</option>
+                    <option value="1000">1000 ms</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="session-row">
+            <label style="color:var(--text-muted)">Collection Session:</label>
+            <select id="sessionId" onchange="updateSessionBadge()">
+                <option value="session_1" selected>Session 1 (Standard Lighting)</option>
+                <option value="session_2">Session 2 (Angle/Distance Variation)</option>
+                <option value="session_3">Session 3 (Clothing/Background Variation)</option>
+                <option value="session_4">Session 4 (Held-Out Test Session)</option>
+            </select>
+
+            <label style="color:var(--text-muted);margin-left:0.5rem;">Subject / Person:</label>
+            <select id="personId">
+                <option value="person_1" selected>Person 1</option>
+                <option value="person_2">Person 2</option>
+            </select>
+
+            <label style="color:var(--text-muted);margin-left:0.5rem;">Crop Framing:</label>
+            <select id="cropMode" onchange="updateCropOverlay()">
+                <option value="mode_b" selected>Mode B (Head+Torso+Hands)</option>
+                <option value="mode_c">Mode C (Wider Upper Body)</option>
+                <option value="mode_a">Mode A (Full Webcam Frame)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <!-- Requirement 11: Display Last Captured Image -->
+        <div class="card">
+            <h3>Last Captured Sample (Saved to Disk)</h3>
+            <div class="last-capture-box">
+                <img id="lastCaptureImg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><rect fill='%23111827' width='140' height='140'/><text fill='%2364748b' font-family='sans-serif' font-size='11' x='50%25' y='50%25' text-anchor='middle'>No capture yet</text></svg>" alt="Last crop">
+                <div class="last-capture-meta" id="lastCaptureMeta">Awaiting first capture...</div>
+            </div>
+        </div>
+
+        <!-- Pose Variation Guidance for Current Class -->
+        <div class="card">
+            <h3>Pose Variation Guide</h3>
+            <div class="variation-guide" id="variationGuideText">
+                Hold phone in right hand, left hand, near chest, or low near desk. Text, scroll, or tilt phone. Change posture every 15-20 frames.
+            </div>
+        </div>
+
+        <!-- Class Progress toward Target 200 -->
+        <div class="card">
+            <h3>Class Progress (Target: 200)</h3>
+            <div id="classProgress"></div>
+        </div>
+
+        <!-- Dataset Actions -->
+        <div class="card">
+            <h3>Dataset Actions</h3>
+            <button class="btn" style="width:100%;margin-bottom:0.4rem;background:rgba(99,102,241,0.15);color:var(--accent-indigo);border:1px solid rgba(99,102,241,0.3);" onclick="triggerSplit()">🔀 Split into Train/Val/Test</button>
+            <button class="btn" style="width:100%;margin-bottom:0.4rem;background:rgba(168,85,247,0.15);color:var(--accent-purple);border:1px solid rgba(168,85,247,0.3);" onclick="triggerPackage()">📦 Package & ZIP Dataset</button>
+            <a class="btn" id="btnDownloadZip" href="/api/dataset/download-zip" style="display:block;text-align:center;text-decoration:none;width:100%;margin-bottom:0.4rem;background:rgba(16,185,129,0.15);color:var(--accent-emerald);border:1px solid rgba(16,185,129,0.3);">⬇️ Download Dataset ZIP</a>
+            <a class="btn" href="/api/dataset/audit-image" target="_blank" style="display:block;text-align:center;text-decoration:none;width:100%;background:rgba(245,158,11,0.15);color:var(--accent-amber);border:1px solid rgba(245,158,11,0.3);">👁️ View Visual Audit Sheet</a>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas id="captureCanvas" style="display:none;"></canvas>
+
+<script>
+const CLASSES = ['handrise','look_forward','read','sleep','stand','turn_head','using_device','write'];
+const CLASS_COLORS = {
+    handrise:'#10b981', look_forward:'#38bdf8', read:'#6366f1', sleep:'#8b5cf6',
+    stand:'#f59e0b', turn_head:'#f97316', using_device:'#ef4444', write:'#ec4899'
+};
+const CLASS_TARGETS = {
+    using_device: 200, write: 200, handrise: 200,
+    look_forward: 150, read: 150, sleep: 150, stand: 150, turn_head: 150
+};
+
+const CLASS_VARIATIONS = {
+    using_device: "Vary phone in right hand, left hand, near chest, lower near desk, two-handed texting, phone tilted sideways, looking directly at screen.",
+    write: "Vary right-hand writing, left-hand writing, notebook centered/left/right, head tilted down, different pen angles, active pen on paper.",
+    handrise: "Vary right hand raised, left hand raised, high raise, medium raise, arm angled, slightly different torso orientations.",
+    read: "Vary holding book/notes, reading flat paper, different head tilt angles, material held closer or further.",
+    turn_head: "Vary head turned left, head turned right, mild turn (~30°), strong turn (~75°), seated angles.",
+    sleep: "Vary head resting on hand, head resting down on desk surface, folded arms on desk, eyes closed.",
+    stand: "Vary standing upright, slight body rotation, standing closer or step back from camera.",
+    look_forward: "Vary direct forward gaze, looking at screen, neutral attentive posture, subtle head micro-shifts."
+};
+
+let selectedClass = 'using_device';
+let classCounts = {};
+CLASSES.forEach(c => classCounts[c] = 0);
+
+let autoBurst = false;
+let autoTimer = null;
+let capturing = false;
+
+// Initialize Class Selection Buttons
+const cbc = document.getElementById('classButtons');
+CLASSES.forEach((c, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'class-btn' + (c === selectedClass ? ' active' : '');
+    btn.id = 'classBtn_' + c;
+    btn.style.borderColor = c === selectedClass ? CLASS_COLORS[c] : 'rgba(255,255,255,0.08)';
+    btn.innerHTML = c.replace('_', ' ') +
+        '<span class="count" id="count_' + c + '">0</span>' +
+        '<span class="key-hint">' + (idx + 1) + '</span>';
+    btn.onclick = () => selectClass(c);
+    cbc.appendChild(btn);
+});
+
+function selectClass(c) {
+    selectedClass = c;
+    document.querySelectorAll('.class-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.borderColor = 'rgba(255,255,255,0.08)';
+    });
+    const activeBtn = document.getElementById('classBtn_' + c);
+    activeBtn.classList.add('active');
+    activeBtn.style.borderColor = CLASS_COLORS[c];
+
+    // Update Status Banner
+    const badge = document.getElementById('activeClassBadge');
+    badge.textContent = c.toUpperCase();
+    badge.style.color = CLASS_COLORS[c];
+    badge.style.borderColor = CLASS_COLORS[c];
+    badge.style.background = CLASS_COLORS[c] + '20';
+
+    const target = CLASS_TARGETS[c] || 200;
+    document.getElementById('targetBadgeVal').textContent = target;
+    const cnt = classCounts[c] || 0;
+    document.getElementById('collectedBadgeVal').textContent = cnt + ' / ' + target;
+
+    // Update Variation Guidance
+    document.getElementById('variationGuideText').textContent = CLASS_VARIATIONS[c] || "Perform varied natural poses.";
+}
+
+function nextClass() {
+    const currIdx = CLASSES.indexOf(selectedClass);
+    const nextIdx = (currIdx + 1) % CLASSES.length;
+    selectClass(CLASSES[nextIdx]);
+    showToast('Switched to: ' + CLASSES[nextIdx], 'info');
+}
+
+function updateSessionBadge() {
+    const sid = document.getElementById('sessionId').value;
+    const snum = sid.replace('session_', '');
+    document.getElementById('sessionBadgeVal').textContent = snum;
+}
+
+// Camera setup
+const video = document.getElementById('webcam');
+const canvas = document.getElementById('captureCanvas');
+const ctx = canvas.getContext('2d');
+
+navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+}).then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => updateCropOverlay();
+}).catch(err => {
+    showToast('Webcam error: ' + err.message, 'error');
+});
+
+function updateCropOverlay() {
+    const overlay = document.getElementById('cropOverlay');
+    const label = document.getElementById('cropLabel');
+    const container = video.parentElement;
+    const vw = container.clientWidth;
+    const vh = container.clientHeight;
+    const mode = document.getElementById('cropMode').value;
+
+    let x1, x2, y1, y2, text;
+    if (mode === 'mode_b') {
+        x1 = 0.15; x2 = 0.85; y1 = 0.08; y2 = 0.96;
+        text = 'MODE B (HEAD + TORSO + HANDS)';
+    } else if (mode === 'mode_c') {
+        x1 = 0.08; x2 = 0.92; y1 = 0.04; y2 = 0.96;
+        text = 'MODE C (WIDER UPPER BODY)';
+    } else {
+        x1 = 0; x2 = 1; y1 = 0; y2 = 1;
+        text = 'MODE A (FULL WEBCAM FRAME)';
+    }
+    overlay.style.left = (x1 * vw) + 'px';
+    overlay.style.top = (y1 * vh) + 'px';
+    overlay.style.width = ((x2 - x1) * vw) + 'px';
+    overlay.style.height = ((y2 - y1) * vh) + 'px';
+    label.textContent = text;
+}
+window.addEventListener('resize', updateCropOverlay);
+
+function getFrameBase64() {
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+// Capture Single Frame
+async function captureOne() {
+    if (capturing) return;
+    capturing = true;
+
+    const b64 = getFrameBase64();
+    const sid = document.getElementById('sessionId').value;
+    const pid = document.getElementById('personId').value;
+    const cm = document.getElementById('cropMode').value;
+
+    try {
+        const res = await fetch('/api/dataset/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image_base64: b64,
+                label: selectedClass,
+                crop_mode: cm,
+                session_id: sid,
+                person_id: pid,
+                notes: 'web_collector'
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            classCounts = data.class_counts || classCounts;
+            updateUI();
+
+            // Display Last Captured Image & Meta
+            const lastImg = document.getElementById('lastCaptureImg');
+            lastImg.src = b64;
+            const meta = document.getElementById('lastCaptureMeta');
+            meta.innerHTML = `<span style="color:${CLASS_COLORS[selectedClass]}">● ${selectedClass}</span><br>${data.sample_id || 'saved'}`;
+
+            // Visual Flash
+            video.parentElement.style.boxShadow = `0 0 35px ${CLASS_COLORS[selectedClass]}60`;
+            setTimeout(() => { video.parentElement.style.boxShadow = 'none'; }, 150);
+        } else {
+            showToast('Save Error: ' + (data.detail || JSON.stringify(data)), 'error');
+        }
+    } catch (e) {
+        showToast('Network Error: ' + e.message, 'error');
+    }
+    capturing = false;
+}
+
+// Auto Burst Recording
+function toggleAutoBurst() {
+    if (autoBurst) {
+        pauseAutoBurst();
+    } else {
+        startAutoBurst();
+    }
+}
+
+function startAutoBurst() {
+    autoBurst = true;
+    const autoBtn = document.getElementById('autoBtn');
+    autoBtn.textContent = '⏹ Stop Burst (A)';
+    autoBtn.classList.add('active');
+    document.getElementById('recordingIndicator').style.display = 'flex';
+
+    const intervalMs = parseInt(document.getElementById('captureInterval').value) || 500;
+    autoTimer = setInterval(captureOne, intervalMs);
+    showToast('Auto Burst STARTED (' + intervalMs + 'ms interval)', 'info');
+}
+
+function pauseAutoBurst() {
+    autoBurst = false;
+    const autoBtn = document.getElementById('autoBtn');
+    autoBtn.textContent = '⚡ Auto Burst (A)';
+    autoBtn.classList.remove('active');
+    document.getElementById('recordingIndicator').style.display = 'none';
+    if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+    }
+    showToast('Auto Burst PAUSED', 'info');
+}
+
+function updateInterval() {
+    if (autoBurst) {
+        pauseAutoBurst();
+        startAutoBurst();
+    }
+}
+
+// Undo Last Sample
+async function undoLast() {
+    try {
+        const res = await fetch('/api/dataset/delete-last', { method: 'POST' });
+        const d = await res.json();
+        if (d.status === 'deleted') {
+            showToast(`Deleted: ${d.label} (${d.sample_id})`, 'info');
+            classCounts = d.class_counts || classCounts;
+            updateUI();
+        } else {
+            showToast('Nothing to undo', 'info');
+        }
+    } catch (e) {
+        showToast('Undo Error: ' + e.message, 'error');
+    }
+}
+
+// Split and Packaging Triggers
+async function triggerSplit() {
+    showToast('Splitting dataset (leakage-safe)...', 'info');
+    try {
+        const res = await fetch('/api/dataset/split', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy: 'session_aware', train_ratio: 0.70, val_ratio: 0.15, test_ratio: 0.15, seed: 42 })
+        });
+        const d = await res.json();
+        if (d.status === 'success') {
+            showToast('Dataset split into Train / Val / Test successfully!', 'success');
+        } else {
+            showToast('Split: ' + (d.message || JSON.stringify(d)), 'info');
+        }
+    } catch (e) {
+        showToast('Split error: ' + e.message, 'error');
+    }
+}
+
+async function triggerPackage() {
+    showToast('Auditing & packaging dataset...', 'info');
+    try {
+        const res = await fetch('/api/dataset/package', { method: 'POST' });
+        const d = await res.json();
+        if (d.status === 'success') {
+            showToast(`ZIP created: ${d.zip_size_mb} MB (${d.grand_total} images)`, 'success');
+            window.location.href = '/api/dataset/download-zip';
+        } else if (d.status === 'not_ready') {
+            showToast('DATASET NOT READY: Empty classes: ' + d.empty_classes.join(', '), 'error');
+        } else {
+            showToast('Package error: ' + (d.detail || d.message), 'error');
+        }
+    } catch (e) {
+        showToast('Package error: ' + e.message, 'error');
+    }
+}
+
+function updateUI() {
+    let grandTotal = 0;
+    CLASSES.forEach(c => {
+        const cnt = classCounts[c] || 0;
+        grandTotal += cnt;
+        const el = document.getElementById('count_' + c);
+        if (el) el.textContent = cnt;
+    });
+
+    document.getElementById('totalBadgeVal').textContent = grandTotal;
+    const target = CLASS_TARGETS[selectedClass] || 200;
+    const currCnt = classCounts[selectedClass] || 0;
+    document.getElementById('collectedBadgeVal').textContent = currCnt + ' / ' + target;
+
+    updateClassProgress();
+}
+
+function updateClassProgress() {
+    const container = document.getElementById('classProgress');
+    let html = '';
+    CLASSES.forEach(c => {
+        const n = classCounts[c] || 0;
+        const target = CLASS_TARGETS[c] || 200;
+        const pct = Math.min(100, Math.round((n / target) * 100));
+        const fillClass = pct >= 100 ? 'fill-green' : pct >= 50 ? 'fill-amber' : 'fill-rose';
+        html += `
+            <div class="class-progress">
+                <div class="row">
+                    <span class="label">${c}</span>
+                    <span class="value" style="color:${CLASS_COLORS[c]}">${n} / ${target}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="fill ${fillClass}" style="width:${pct}%"></div>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = type === 'error' ? 'rgba(239,68,68,0.95)' : type === 'info' ? 'rgba(99,102,241,0.95)' : 'rgba(16,185,129,0.95)';
+    t.style.color = '#fff';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Hotkey Navigation
+document.addEventListener('keydown', e => {
+    if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.code === 'Space') {
+        e.preventDefault();
+        captureOne();
+    } else if (e.key === 'a' || e.key === 'A') {
+        toggleAutoBurst();
+    } else if (e.key === 'p' || e.key === 'P') {
+        pauseAutoBurst();
+    } else if (e.key === 'z' || e.key === 'Z') {
+        undoLast();
+    } else if (e.key === 'n' || e.key === 'N') {
+        nextClass();
+    } else if (e.key >= '1' && e.key <= '8') {
+        selectClass(CLASSES[parseInt(e.key) - 1]);
+    }
+});
+
+// Load stats on mount
+async function loadStats() {
+    try {
+        const res = await fetch('/api/dataset/stats');
+        const data = await res.json();
+        classCounts = data.class_counts || {};
+        CLASSES.forEach(c => { if (!(c in classCounts)) classCounts[c] = 0; });
+        updateUI();
+    } catch (e) {
+        console.error('Stats error', e);
+    }
+}
+selectClass('using_device');
+loadStats();
+setInterval(loadStats, 6000);
+</script>
+</body>
+</html>

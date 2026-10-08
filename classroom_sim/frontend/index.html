@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Classroom Engagement — Teacher Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f5ef;
+  --paper:#fffdf8;
+  --ink:#1b2a22;
+  --ink-soft:#4b5a50;
+  --line:#dcd6c6;
+  --accent:#2f5233;
+  --accent-soft:#e7ede4;
+  --brass:#8a6d3b;
+  --level-high:#fbfbf7;
+  --level-high-border:#1b2a22;
+  --level-medium:#eab308;
+  --level-medium-ink:#3a2c00;
+  --level-low:#3b6ea5;
+  --level-low-ink:#eef4fa;
+  --warn:#b3402f;
+  --warn-soft:#f7e5e1;
+  --radius:6px;
+  --act-handrise:#c9822a;
+  --act-look_forward:#3f6b52;
+  --act-read:#6f5b9e;
+  --act-write:#a4632f;
+  --act-stand:#8a8f3c;
+  --act-turn_head:#b06a86;
+  --act-using_device:#5c6570;
+  --act-sleep:#4a4a4a;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+h1,h2,h3{font-family:'Source Serif 4',Georgia,serif; margin:0; font-weight:600;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;}
+button{font-family:inherit;}
+
+/* ---------- App shell ---------- */
+#app{display:flex; min-height:100vh;}
+#sidebar{
+  width:220px; flex-shrink:0; background:var(--accent); color:#f3f1e7;
+  padding:20px 16px; display:flex; flex-direction:column; gap:4px;
+  position:sticky; top:0; height:100vh;
+}
+#sidebar .brand{font-family:'Source Serif 4',serif; font-size:17px; line-height:1.25; margin-bottom:6px;}
+#sidebar .brand small{display:block; font-family:'Inter'; font-size:11px; letter-spacing:.04em; color:#c9d6cb; margin-top:4px;}
+.mode-badge{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+  padding:5px 9px; border-radius:20px; margin:10px 0 18px; width:fit-content;
+  background:#eab308; color:#3a2c00;
+}
+.mode-badge.live{background:#b3402f; color:#fff;}
+.mode-badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.navlink{
+  display:block; padding:9px 10px; border-radius:5px; font-size:14px; color:#e7ede4;
+  text-decoration:none; cursor:pointer; border:1px solid transparent;
+}
+.navlink:hover{background:rgba(255,255,255,.08);}
+.navlink.active{background:var(--paper); color:var(--accent); font-weight:600;}
+#sidebar .foot{margin-top:auto; font-size:11px; color:#aebfaf; line-height:1.5;}
+
+#main{flex:1; min-width:0; display:flex;}
+#content{flex:1; min-width:0; padding:24px 28px 90px;}
+#rightrail{
+  width:280px; flex-shrink:0; border-left:1px solid var(--line); padding:20px 18px;
+  background:var(--paper);
+}
+#topbar{display:none;}
+#bottomnav{display:none;}
+
+.page-title{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap;}
+.page-title h1{font-size:24px;}
+.subtle{color:var(--ink-soft); font-size:13px;}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 18px;
+}
+.grid{display:grid; gap:14px;}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.grid.cols-2{grid-template-columns:repeat(2,1fr);}
+
+/* Classroom hero */
+.hero{
+  display:flex; align-items:center; gap:22px; padding:20px 22px; margin-bottom:18px;
+  border-radius:var(--radius); border:1px solid var(--line); background:var(--paper);
+}
+.hero .score{font-family:'Source Serif 4',serif; font-size:52px; line-height:1; font-weight:700;}
+.hero .score-block{display:flex; flex-direction:column; gap:6px;}
+.hero .score-label{font-size:12px; color:var(--ink-soft);}
+.level-pill{
+  display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px;
+  font-size:12px; font-weight:700; letter-spacing:.02em; width:fit-content;
+  border:1px solid var(--line);
+}
+.level-pill.HIGH{background:var(--level-high); border-color:var(--level-high-border); color:var(--ink);}
+.level-pill.MEDIUM{background:var(--level-medium); color:var(--level-medium-ink); border-color:var(--level-medium);}
+.level-pill.LOW{background:var(--level-low); color:var(--level-low-ink); border-color:var(--level-low);}
+.hero .stats{display:flex; gap:22px; margin-left:auto; flex-wrap:wrap;}
+.hero .stat{text-align:center;}
+.hero .stat .n{font-family:'Source Serif 4',serif; font-size:22px;}
+.hero .stat .l{font-size:11px; color:var(--ink-soft);}
+
+/* Student card */
+.student-card{display:flex; flex-direction:column; gap:10px; cursor:pointer;}
+.student-card:hover{border-color:var(--accent);}
+.student-card .head{display:flex; justify-content:space-between; align-items:flex-start;}
+.student-card h3{font-size:16px;}
+.student-card .track{font-size:11px; color:var(--ink-soft);}
+.activity-tag{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:4px;
+  font-size:12px; font-weight:600; color:#fff; width:fit-content;
+}
+.activity-tag .sw{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.85);}
+.score-row{display:flex; align-items:center; gap:10px;}
+.score-row .num{font-family:'Source Serif 4',serif; font-size:26px;}
+.mini-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:11px; color:var(--ink-soft);}
+.mini-stats b{display:block; color:var(--ink); font-size:13px; font-family:'IBM Plex Mono',monospace;}
+.status-dot{display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft);}
+.status-dot .d{width:7px;height:7px;border-radius:50%;background:var(--accent);}
+
+/* Timeline bar */
+.timeline-bar{display:flex; height:26px; border-radius:4px; overflow:hidden; border:1px solid var(--line);}
+.timeline-bar .seg{display:flex; align-items:center; justify-content:center; font-size:9px; color:#fff; overflow:hidden; white-space:nowrap;}
+.timeline-legend{display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:8px; font-size:11px; color:var(--ink-soft);}
+.timeline-legend .item{display:flex; align-items:center; gap:5px;}
+.timeline-legend .sw{width:9px;height:9px;border-radius:2px;}
+
+/* Events */
+.event-row{padding:9px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
+.event-row:last-child{border-bottom:none;}
+.event-row .t{font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); font-size:11px;}
+.event-row.alert{background:var(--warn-soft); margin:0 -18px; padding:9px 18px; border-bottom:1px solid #eaccc4;}
+.event-row.alert .msg{color:var(--warn); font-weight:600;}
+.event-row.system .msg{color:var(--ink-soft); font-style:italic;}
+
+/* Controls */
+.controls-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.btn{
+  padding:8px 14px; border-radius:5px; border:1px solid var(--line); background:var(--paper);
+  color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
+}
+.btn:hover{border-color:var(--accent);}
+.btn.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+.btn.primary:hover{opacity:.92;}
+.btn.ghost{background:transparent;}
+.speed-group{display:inline-flex; border:1px solid var(--line); border-radius:5px; overflow:hidden;}
+.speed-group button{border:none; border-right:1px solid var(--line); background:var(--paper); padding:7px 11px; font-size:12px; cursor:pointer; font-family:'IBM Plex Mono',monospace;}
+.speed-group button:last-child{border-right:none;}
+.speed-group button.active{background:var(--accent); color:#fff;}
+select.scenario-select{padding:8px 10px; border-radius:5px; border:1px solid var(--line); font-size:13px; background:var(--paper); color:var(--ink);}
+
+/* Simulated camera */
+.camera-frame{
+  border:2px dashed var(--line); border-radius:8px; padding:16px; position:relative; background:#f1efe6;
+  min-height:220px;
+}
+.camera-label{position:absolute; top:10px; left:14px; font-size:10px; letter-spacing:.06em; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+.camera-row{display:flex; justify-content:space-around; align-items:flex-end; height:170px; margin-top:14px;}
+.cam-student{display:flex; flex-direction:column; align-items:center; gap:6px;}
+.cam-box{width:78px; height:104px; border-radius:6px; border:2px solid var(--ink); display:flex; align-items:center; justify-content:center; background:var(--paper); position:relative;}
+.cam-box .tid{position:absolute; top:-9px; left:-9px; background:var(--ink); color:#fff; font-size:10px; padding:2px 5px; border-radius:3px; font-family:'IBM Plex Mono',monospace;}
+.cam-caption{font-size:11px; text-align:center; line-height:1.5;}
+.cam-board{border-top:3px solid var(--brass); text-align:center; padding-top:8px; margin-top:6px; font-size:11px; color:var(--ink-soft);}
+
+/* chart canvas */
+canvas.chart{width:100%; display:block;}
+
+/* Tables */
+table.plain{width:100%; border-collapse:collapse; font-size:13px;}
+table.plain th{text-align:left; font-size:11px; color:var(--ink-soft); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line);}
+table.plain td{padding:7px 8px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono',monospace; font-size:12.5px;}
+
+/* Section spacing */
+.section{margin-bottom:22px;}
+.section h2{font-size:15px; margin-bottom:10px; color:var(--ink); display:flex; align-items:center; gap:8px;}
+.section .subtle{margin-bottom:10px;}
+
+/* Detail back link */
+.back-link{font-size:13px; color:var(--accent); cursor:pointer; margin-bottom:10px; display:inline-block;}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px){
+  #rightrail{display:none;}
+}
+@media (max-width: 760px){
+  #sidebar{display:none;}
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top,0px));
+    background:var(--accent); color:#fff; position:sticky; top:0; z-index:5;
+  }
+  #topbar .brand{font-family:'Source Serif 4',serif; font-size:15px;}
+  #app{flex-direction:column;}
+  #content{padding:16px 14px 90px;}
+  .grid.cols-3, .grid.cols-2{grid-template-columns:1fr;}
+  .hero{flex-direction:column; align-items:flex-start; gap:14px;}
+  .hero .stats{margin-left:0;}
+  #bottomnav{
+    display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--paper);
+    border-top:1px solid var(--line); padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+    z-index:6; justify-content:space-between;
+  }
+  #bottomnav a{
+    flex:1; text-align:center; font-size:10px; color:var(--ink-soft); text-decoration:none;
+    padding:6px 2px; border-radius:6px;
+  }
+  #bottomnav a.active{color:var(--accent); font-weight:700; background:var(--accent-soft);}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <nav id="sidebar">
+    <div class="brand">AI Classroom<br>Engagement<small>TEACHER PORTAL</small></div>
+    <div id="modeBadgeSidebar" class="mode-badge"><span class="dot"></span>SIMULATION MODE</div>
+    <a class="navlink" data-page="overview">Overview</a>
+    <a class="navlink" data-page="students">Students</a>
+    <a class="navlink" data-page="timeline">Timeline</a>
+    <a class="navlink" data-page="events">Events</a>
+    <a class="navlink" data-page="simulation">Simulation</a>
+    <a class="navlink" data-page="session">Session</a>
+    <a class="navlink" data-page="settings">Settings</a>
+    <div class="foot">Scenario: <span id="sidebarScenario">—</span><br>Sim time: <span id="sidebarClock" class="mono">00:00:00</span></div>
+  </nav>
+
+  <div id="main">
+    <div id="content">
+      <div id="topbar">
+        <div class="brand">AI Classroom Engagement</div>
+        <div id="modeBadgeTop" class="mode-badge"><span class="dot"></span>SIMULATION</div>
+      </div>
+      <div id="page"></div>
+    </div>
+    <aside id="rightrail">
+      <div class="section">
+        <h2>Recent Events</h2>
+        <div id="railEvents"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<nav id="bottomnav">
+  <a data-page="overview">Overview</a>
+  <a data-page="students">Students</a>
+  <a data-page="timeline">Timeline</a>
+  <a data-page="events">Events</a>
+  <a data-page="simulation">Sim</a>
+  <a data-page="session">Session</a>
+</nav>
+
+<script>
+/* =========================================================================
+   Constants shared with the backend's semantics (models.py)
+   ========================================================================= */
+const ACTIVITY_LABELS = {
+  handrise:"Hand Raise", look_forward:"Look Forward", read:"Reading", sleep:"Sleeping",
+  stand:"Standing", turn_head:"Turned Away", using_device:"Using Device", write:"Writing"
+};
+const ACTIVITY_COLOR_VAR = a => `var(--act-${a})`;
+
+let state = null;
+let currentPage = "overview";
+let currentStudentId = null;
+let ws = null;
+
+/* =========================================================================
+   Networking
+   ========================================================================= */
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!res.ok){ console.error("API error", path, await res.text()); }
+  return res.json().catch(()=>({}));
+}
+
+function connectWS(){
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${proto}//${location.host}/ws/simulation`);
+  ws.onmessage = (ev)=>{
+    state = JSON.parse(ev.data);
+    render();
+  };
+  ws.onclose = ()=> setTimeout(connectWS, 1500);
+  ws.onerror = ()=> ws.close();
+}
+
+async function bootstrap(){
+  try{
+    const res = await fetch("/api/simulation/state");
+    state = await res.json();
+    render();
+  }catch(e){ console.error(e); }
+  connectWS();
+}
+
+/* =========================================================================
+   Router
+   ========================================================================= */
+function goto(page, param){
+  currentPage = page;
+  if(page === "student_detail") currentStudentId = param;
+  document.querySelectorAll(".navlink").forEach(el=>{
+    el.classList.toggle("active", el.dataset.page === page);
+  });
+  document.querySelectorAll("#bottomnav a").forEach(el=>{
+    el.classList.toggle("active", el.dataset.page === page);
+  });
+  window.scrollTo(0,0);
+  render();
+}
+document.querySelectorAll(".navlink, #bottomnav a").forEach(el=>{
+  el.addEventListener("click", ()=> goto(el.dataset.page));
+});
+
+/* =========================================================================
+   Small render helpers
+   ========================================================================= */
+function levelPill(level, score){
+  return `<span class="level-pill ${level}">${level} · ${Math.round(score)}</span>`;
+}
+function activityTag(activity){
+  return `<span class="activity-tag" style="background:${ACTIVITY_COLOR_VAR(activity)}">
+    <span class="sw"></span>${ACTIVITY_LABELS[activity]||activity}</span>`;
+}
+function fmtMin(seconds){
+  seconds = Math.round(seconds||0);
+  const m = Math.floor(seconds/60), s = seconds%60;
+  return `${m}m ${String(s).padStart(2,"0")}s`;
+}
+
+function renderTimelineBar(segments, totalWidthSeconds){
+  if(!segments || !segments.length) return `<div class="subtle">No timeline data yet.</div>`;
+  const nowT = state.simulation_time || 1;
+  const windowStart = Math.max(0, nowT - totalWidthSeconds);
+  const visible = segments.filter(s => (s.end===null? nowT : s.end) > windowStart);
+  const span = nowT - windowStart || 1;
+  let html = `<div class="timeline-bar">`;
+  visible.forEach(seg=>{
+    const start = Math.max(seg.start, windowStart);
+    const end = seg.end===null ? nowT : seg.end;
+    const widthPct = Math.max(1.5, ((end-start)/span)*100);
+    const label = ACTIVITY_LABELS[seg.activity]||seg.activity;
+    html += `<div class="seg" title="${label} (${Math.round(end-start)}s)"
+      style="width:${widthPct}%; background:${ACTIVITY_COLOR_VAR(seg.activity)};">
+      ${widthPct>9?label:""}</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function timelineLegend(){
+  return `<div class="timeline-legend">` + Object.entries(ACTIVITY_LABELS).map(([k,v])=>
+    `<div class="item"><span class="sw" style="background:${ACTIVITY_COLOR_VAR(k)}"></span>${v}</div>`
+  ).join("") + `</div>`;
+}
+
+/* Canvas line chart for score history, with HIGH/MEDIUM/LOW bands */
+function drawScoreChart(canvas, points){
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 300, h = canvas.clientHeight || 120;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+
+  const padL = 30, padR = 6, padT = 8, padB = 16;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  // bands
+  const yFor = v => padT + plotH - (v/100)*plotH;
+  ctx.fillStyle = "rgba(234,179,8,0.10)";
+  ctx.fillRect(padL, yFor(66), plotW, yFor(33)-yFor(66));
+  ctx.fillStyle = "rgba(59,110,165,0.08)";
+  ctx.fillRect(padL, yFor(33), plotW, yFor(0)-yFor(33));
+
+  ctx.strokeStyle = "#dcd6c6"; ctx.lineWidth = 1;
+  [0,33,66,100].forEach(v=>{
+    ctx.beginPath(); ctx.moveTo(padL, yFor(v)); ctx.lineTo(w-padR, yFor(v)); ctx.stroke();
+    ctx.fillStyle = "#8a8f3c"; ctx.font = "9px IBM Plex Mono, monospace";
+    ctx.fillText(v, 2, yFor(v)+3);
+  });
+
+  if(!points || points.length < 2) return;
+  const tMin = points[0].t, tMax = points[points.length-1].t || 1;
+  const xFor = t => padL + ((t-tMin)/((tMax-tMin)||1))*plotW;
+
+  ctx.strokeStyle = "#2f5233"; ctx.lineWidth = 2; ctx.beginPath();
+  points.forEach((p,i)=>{
+    const x = xFor(p.t), y = yFor(p.score);
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+/* =========================================================================
+   Alerts feed (right rail + used inline on mobile overview)
+   ========================================================================= */
+function renderEventsList(events, limit){
+  const list = events.slice(-limit).reverse();
+  if(!list.length) return `<div class="subtle">No events yet — press Play.</div>`;
+  return list.map(e=>{
+    const cls = e.kind==="alert" ? "alert" : (e.kind==="system" ? "system" : "");
+    return `<div class="event-row ${cls}">
+      <span class="t">${e.wall_clock}</span> &nbsp;
+      <span class="msg">${e.message}</span>
+    </div>`;
+  }).join("");
+}
+
+/* =========================================================================
+   Pages
+   ========================================================================= */
+function pageOverview(){
+  const s = state;
+  const lvl = s.classroom_level;
+  return `
+  <div class="page-title">
+    <h1>Classroom Overview</h1>
+    <span class="subtle mono">${s.simulation_clock} · ${s.scenario_label}</span>
+  </div>
+
+  <div class="hero">
+    <div class="score-block">
+      <span class="score-label">CLASSROOM ENGAGEMENT SCORE</span>
+      <span class="score">${Math.round(s.classroom_score)}</span>
+      ${levelPill(lvl, s.classroom_score)}
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">${s.student_count}</div><div class="l">Students</div></div>
+      <div class="stat"><div class="n">${s.focused_count}</div><div class="l">Focused</div></div>
+      <div class="stat"><div class="n">${s.device_count}</div><div class="l">Using Device</div></div>
+      <div class="stat"><div class="n">${s.sleep_count}</div><div class="l">Sleeping</div></div>
+      <div class="stat"><div class="n">${s.stand_count}</div><div class="l">Standing</div></div>
+      <div class="stat"><div class="n">${s.turn_head_count}</div><div class="l">Turned Away</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Students</h2>
+    <div class="grid cols-3">
+      ${s.students.map(studentCard).join("")}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Classroom Score History</h2>
+    <div class="card"><canvas id="classroomChart" class="chart" height="130"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>Quick Controls</h2>
+    <div class="card controls-row">${simControlsInline()}</div>
+  </div>
+  `;
+}
+
+function studentCard(st){
+  return `
+  <div class="card student-card" onclick="goto('student_detail','${st.student_id}')">
+    <div class="head">
+      <div>
+        <h3>${st.display_name}</h3>
+        <div class="track">Track ID: ${st.track_id} · ${st.status}</div>
+      </div>
+      ${levelPill(st.level, st.score)}
+    </div>
+    ${activityTag(st.current_activity)}
+    <div class="score-row"><span class="num">${Math.round(st.score)}</span><span class="subtle">engagement</span></div>
+    <div class="mini-stats">
+      <div>Focused<b>${fmtMin(st.focused_time)}</b></div>
+      <div>Device<b>${fmtMin(st.device_time)}</b></div>
+      <div>Sleep<b>${fmtMin(st.sleep_time)}</b></div>
+    </div>
+  </div>`;
+}
+
+function pageStudents(){
+  return `
+  <div class="page-title"><h1>Students</h1><span class="subtle mono">${state.simulation_clock}</span></div>
+  <div class="grid cols-3">${state.students.map(studentCard).join("")}</div>
+  <div class="section" style="margin-top:22px;">
+    <h2>Session Totals</h2>
+    <table class="plain">
+      <tr><th>Student</th><th>Track</th><th>Activity</th><th>Score</th><th>Level</th><th>Focused</th><th>Device</th><th>Sleep</th></tr>
+      ${state.students.map(s=>`
+        <tr>
+          <td class="mono">${s.display_name}</td>
+          <td class="mono">${s.track_id}</td>
+          <td class="mono">${ACTIVITY_LABELS[s.current_activity]}</td>
+          <td class="mono">${Math.round(s.score)}</td>
+          <td class="mono">${s.level}</td>
+          <td class="mono">${fmtMin(s.focused_time)}</td>
+          <td class="mono">${fmtMin(s.device_time)}</td>
+          <td class="mono">${fmtMin(s.sleep_time)}</td>
+        </tr>`).join("")}
+    </table>
+  </div>`;
+}
+
+function pageStudentDetail(){
+  const st = state.students.find(s=>s.student_id===currentStudentId) || state.students[0];
+  if(!st) return `<div class="subtle">No student data.</div>`;
+  setTimeout(()=> drawScoreChart(document.getElementById("studentChart"), st.score_history), 0);
+  return `
+  <span class="back-link" onclick="goto('students')">&larr; Back to Students</span>
+  <div class="page-title">
+    <h1>${st.display_name}</h1>
+    ${levelPill(st.level, st.score)}
+  </div>
+  <div class="subtle" style="margin-bottom:14px;">Track ID ${st.track_id} · ${st.status} · Session ${state.simulation_clock}</div>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="score-label subtle">CURRENT ACTIVITY</div>
+      ${activityTag(st.current_activity)}
+      <div class="score-row" style="margin-top:10px;"><span class="num">${Math.round(st.score)}</span><span class="subtle">engagement score</span></div>
+    </div>
+    <div class="card">
+      <div class="score-label subtle">DURATION BREAKDOWN</div>
+      <div class="mini-stats" style="grid-template-columns:repeat(2,1fr); margin-top:8px;">
+        <div>Focused<b>${fmtMin(st.focused_time)}</b></div>
+        <div>Device<b>${fmtMin(st.device_time)}</b></div>
+        <div>Sleep<b>${fmtMin(st.sleep_time)}</b></div>
+        <div>Stand<b>${fmtMin(st.stand_time)}</b></div>
+        <div>Turned away<b>${fmtMin(st.turn_head_time)}</b></div>
+        <div>Hand raises<b>${st.handrise_count}</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:18px;">
+    <h2>Score History</h2>
+    <div class="card"><canvas id="studentChart" class="chart" height="130"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>Behavior Timeline</h2>
+    <div class="card">${renderTimelineBar(st.activity_timeline, 180)}${timelineLegend()}</div>
+  </div>
+
+  <div class="section">
+    <h2>Recent Behavior Transitions</h2>
+    <div class="card">${renderEventsList((state.recent_events||[]).filter(e=>e.student_id===st.student_id), 15)}</div>
+  </div>`;
+}
+
+function pageTimeline(){
+  setTimeout(()=>{}, 0);
+  return `
+  <div class="page-title"><h1>Classroom Timeline</h1><span class="subtle mono">${state.simulation_clock}</span></div>
+  <div class="subtle" style="margin-bottom:14px;">Last 3 minutes of behavior per student.</div>
+  ${state.students.map(st=>`
+    <div class="section">
+      <h2>${st.display_name} <span class="subtle">— Track ${st.track_id}</span></h2>
+      <div class="card">${renderTimelineBar(st.activity_timeline, 180)}</div>
+    </div>
+  `).join("")}
+  <div class="card">${timelineLegend()}</div>`;
+}
+
+function pageEvents(){
+  const events = state.recent_events||[];
+  const alerts = events.filter(e=>e.kind==="alert");
+  return `
+  <div class="page-title"><h1>Events &amp; Alerts</h1><span class="subtle mono">${events.length} recent</span></div>
+  <div class="grid cols-2">
+    <div class="section">
+      <h2>Alerts <span class="subtle">(${alerts.length})</span></h2>
+      <div class="card">${renderEventsList(alerts, 30) }</div>
+    </div>
+    <div class="section">
+      <h2>All Events</h2>
+      <div class="card">${renderEventsList(events, 60)}</div>
+    </div>
+  </div>`;
+}
+
+function simControlsInline(){
+  const speeds = [0.5,1,2,5,10];
+  return `
+    <button class="btn primary" onclick="apiPost('/api/simulation/start')">▶ Play</button>
+    <button class="btn" onclick="apiPost('/api/simulation/pause')">⏸ Pause</button>
+    <button class="btn ghost" onclick="apiPost('/api/simulation/reset')">↺ Reset</button>
+    <div class="speed-group">
+      ${speeds.map(sp=>`<button class="${state.speed===sp?'active':''}" onclick="apiPost('/api/simulation/speed',{speed:${sp}})">${sp}x</button>`).join("")}
+    </div>
+    <button class="btn ghost" onclick="apiPost('/api/simulation/jump',{seconds:10})">+10s</button>
+    <button class="btn ghost" onclick="apiPost('/api/simulation/jump',{seconds:30})">+30s</button>
+  `;
+}
+
+function pageSimulation(){
+  const scenarios = state.available_scenarios||[];
+  const uartLog = state.uart_log||[];
+  return `
+  <div class="page-title"><h1>Simulation Controls</h1>
+    <span class="subtle">${state.running? "Running" : "Paused"} · ${state.speed}x</span>
+  </div>
+
+  <div class="section">
+    <h2>Playback</h2>
+    <div class="card controls-row">${simControlsInline()}</div>
+  </div>
+
+  <div class="section">
+    <h2>Scenario</h2>
+    <div class="card controls-row">
+      <select class="scenario-select" onchange="apiPost('/api/simulation/scenario',{scenario:this.value})">
+        ${scenarios.map(sc=>`<option value="${sc.key}" ${sc.key===state.scenario?"selected":""}>${sc.label}</option>`).join("")}
+      </select>
+      <span class="subtle">Switching scenario resets the session clock.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Simulated Camera <span class="subtle">— schematic, not a real detection feed</span></h2>
+    <div class="card camera-frame">
+      <div class="camera-label">SIMULATED CAMERA</div>
+      <div class="camera-row">
+        ${state.students.map(st=>`
+          <div class="cam-student">
+            <div class="cam-box" style="border-color:${ACTIVITY_COLOR_VAR(st.current_activity)}">
+              <span class="tid">#${st.track_id}</span>
+              ${Math.round(st.score)}
+            </div>
+            <div class="cam-caption"><b>${st.display_name}</b><br>${ACTIVITY_LABELS[st.current_activity]}</div>
+          </div>`).join("")}
+      </div>
+      <div class="cam-board">Blackboard / Front of Classroom</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Simulated UART Output <span class="subtle mono">ENG,&lt;score&gt;,&lt;level&gt;,&lt;focused&gt;,&lt;device&gt;,&lt;sleep&gt;</span></h2>
+    <div class="card">
+      <div class="mono" style="font-size:13px; margin-bottom:8px;">Last packet: <b>${state.uart_last_packet||"—"}</b></div>
+      <table class="plain">
+        <tr><th>Sim Time</th><th>Packet</th></tr>
+        ${uartLog.slice().reverse().map(e=>`<tr><td>${e.simulation_time}s</td><td>${e.packet}</td></tr>`).join("")}
+      </table>
+      <div class="subtle" style="margin-top:8px;">No COM port required — this is a software-only simulation of the TM4C123GH6PM UART0 link (9600 8-N-1).</div>
+    </div>
+  </div>`;
+}
+
+function pageSession(){
+  return `
+  <div class="page-title"><h1>Session Summary</h1><span class="subtle mono">${state.simulation_clock}</span></div>
+  <div id="summaryHost" class="subtle">Loading summary…</div>
+  `;
+}
+async function loadSessionSummary(){
+  const res = await fetch("/api/simulation/summary");
+  const d = await res.json();
+  const host = document.getElementById("summaryHost");
+  if(!host) return;
+  host.innerHTML = `
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="score-label subtle">SESSION</div>
+      <div class="mini-stats" style="grid-template-columns:repeat(2,1fr); margin-top:8px;">
+        <div>Duration<b>${d.session_clock}</b></div>
+        <div>Avg. classroom score<b>${d.average_classroom_score}</b></div>
+        <div>Final score<b>${d.final_classroom_score}</b></div>
+        <div>Final level<b>${d.final_classroom_level}</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="score-label subtle">STANDOUT STUDENTS</div>
+      <div class="mini-stats" style="grid-template-columns:repeat(2,1fr); margin-top:8px;">
+        <div>Highest<b>${d.highest_engagement_student} (${d.highest_engagement_score})</b></div>
+        <div>Lowest<b>${d.lowest_engagement_student} (${d.lowest_engagement_score})</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="section" style="margin-top:16px;">
+    <h2>Behavior Totals</h2>
+    <div class="card">
+      <table class="plain">
+        <tr><th>Hand raises</th><th>Device events</th><th>Sleep events</th><th>Turn-away events</th><th>Standing events</th></tr>
+        <tr>
+          <td>${d.total_handraises}</td><td>${d.total_device_events}</td><td>${d.total_sleep_events}</td>
+          <td>${d.total_turn_head_events}</td><td>${d.total_standing_events}</td>
+        </tr>
+        <tr><th>Reading time</th><th>Writing time</th><th>Look-forward time</th><th></th><th></th></tr>
+        <tr><td>${fmtMin(d.total_reading_time)}</td><td>${fmtMin(d.total_writing_time)}</td><td>${fmtMin(d.total_look_forward_time)}</td><td></td><td></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Per-Student Average Score</h2>
+    <div class="card">
+      <table class="plain">
+        ${Object.entries(d.per_student_average_score).map(([name,score])=>`<tr><td>${name}</td><td>${score}</td></tr>`).join("")}
+      </table>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Export</h2>
+    <div class="card controls-row">
+      <a class="btn primary" href="/api/simulation/export.json">Export Session (JSON)</a>
+      <a class="btn" href="/api/simulation/export.csv">Export Score Log (CSV)</a>
+    </div>
+  </div>`;
+}
+
+function pageSettings(){
+  return `
+  <div class="page-title"><h1>Settings</h1></div>
+  <div class="section">
+    <h2>Mode</h2>
+    <div class="card">
+      <div class="controls-row">
+        <button class="btn ${state.mode==='SIMULATION'?'primary':''}" onclick="apiPost('/api/mode',{mode:'SIMULATION'})">SIMULATION</button>
+        <button class="btn ${state.mode==='LIVE'?'primary':''}" onclick="setLive()">LIVE</button>
+      </div>
+      <p class="subtle" style="margin-top:10px;">
+        LIVE mode uses the real webcam + YOLO11s + ByteTrack pipeline and requires the
+        main project's hardware/model stack — it is intentionally not available in this
+        standalone simulation build. SIMULATION mode uses synthetic, deterministic data
+        and never claims to be a real detection.
+      </p>
+    </div>
+  </div>
+  <div class="section">
+    <h2>About This Build</h2>
+    <div class="card subtle">
+      8 fixed behavior classes: handrise, look_forward, read, sleep, stand, turn_head,
+      using_device, write. Engagement weights and HIGH/MEDIUM/LOW thresholds match the
+      real project. Classroom score is always the mean of the three students' current
+      scores — never a random number.
+    </div>
+  </div>`;
+}
+async function setLive(){
+  const res = await fetch("/api/mode", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({mode:"LIVE"})});
+  if(!res.ok){
+    const body = await res.json();
+    alert(body.detail || "LIVE mode is not available in this build.");
+  }
+}
+
+/* =========================================================================
+   Main render dispatch
+   ========================================================================= */
+function render(){
+  if(!state) return;
+  const modeBadgeHtml = s => `<span class="dot"></span>${s.mode} MODE`;
+  document.getElementById("modeBadgeSidebar").innerHTML = modeBadgeHtml(state);
+  document.getElementById("modeBadgeTop").innerHTML = modeBadgeHtml(state);
+  document.getElementById("modeBadgeSidebar").className = "mode-badge" + (state.mode==="LIVE"?" live":"");
+  document.getElementById("modeBadgeTop").className = "mode-badge" + (state.mode==="LIVE"?" live":"");
+  document.getElementById("sidebarScenario").textContent = state.scenario_label;
+  document.getElementById("sidebarClock").textContent = state.simulation_clock;
+  document.getElementById("railEvents").innerHTML = renderEventsList(state.recent_events||[], 12);
+
+  const pageEl = document.getElementById("page");
+  let html = "";
+  if(currentPage==="overview") html = pageOverview();
+  else if(currentPage==="students") html = pageStudents();
+  else if(currentPage==="student_detail") html = pageStudentDetail();
+  else if(currentPage==="timeline") html = pageTimeline();
+  else if(currentPage==="events") html = pageEvents();
+  else if(currentPage==="simulation") html = pageSimulation();
+  else if(currentPage==="session") html = pageSession();
+  else if(currentPage==="settings") html = pageSettings();
+  pageEl.innerHTML = html;
+
+  if(currentPage==="overview"){
+    const pts = (state.classroom_history||[]).map(p=>({t:p.t, score:p.score}));
+    setTimeout(()=> drawScoreChart(document.getElementById("classroomChart"), pts), 0);
+  }
+  if(currentPage==="session"){
+    loadSessionSummary();
+  }
+  goto._silent = true;
+}
+
+goto("overview");
+bootstrap();
+</script>
+</body>
+</html>

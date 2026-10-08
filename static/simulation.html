@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Classroom Engagement Monitoring — Simulated Camera & Embedded Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/simulation_style.css">
+</head>
+<body>
+
+  <!-- Fullscreen Classroom Camera Feed -->
+  <div id="viewportContainer">
+    <canvas id="classroomCanvas"></canvas>
+    <div class="camera-overlay-grain"></div>
+
+    <!-- Minimal Switcher to Portal -->
+    <div class="top-portal-nav">
+      <a href="/portal" class="portal-link">📊 Analytics Portal</a>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 1. PHYSICAL TEACHER SMARTPHONE INSET (Secondary Visualization)    -->
+    <!-- ================================================================= -->
+    <div id="phoneOverlayContainer">
+      <div class="phone-wrapper">
+        <div class="phone-frame">
+          <!-- Dynamic Island / Speaker notch -->
+          <div class="phone-notch">
+            <div class="phone-camera-dot"></div>
+          </div>
+          
+          <!-- Phone Status Bar -->
+          <div class="phone-status-bar">
+            <span id="phoneClock" class="phone-status-time">09:42</span>
+            <div class="phone-status-icons">
+              <span class="icon-signal">📶</span>
+              <span class="icon-wifi">􀙇</span>
+              <span class="icon-batt">🔋 98%</span>
+            </div>
+          </div>
+
+          <!-- Phone Inner Screen: Teacher Portal -->
+          <div class="phone-screen">
+            <!-- App Header -->
+            <div class="phone-header">
+              <div class="phone-app-title">AI CLASSROOM</div>
+              <div class="phone-sub-title">Live Teacher Feed</div>
+            </div>
+
+            <!-- Urgent Notification Banner -->
+            <div id="phoneNotificationBanner" class="phone-notif-banner hidden">
+              <div class="notif-icon">⚠️</div>
+              <div class="notif-text">
+                <div id="phoneNotifTitle" class="notif-title">Alert: Student 02</div>
+                <div id="phoneNotifBody" class="notif-body">Using device detected</div>
+              </div>
+            </div>
+
+            <!-- Classroom Overall Score Card -->
+            <div class="phone-class-card">
+              <div class="phone-class-meta">
+                <span class="phone-label">CLASSROOM OVERALL</span>
+                <span id="phoneClassLevel" class="phone-level-tag level-high">HIGH</span>
+              </div>
+              <div class="phone-class-score-row">
+                <span id="phoneClassScore" class="phone-score-large">95</span>
+                <span class="phone-score-unit">/ 100</span>
+              </div>
+            </div>
+
+            <!-- 3 Students Live Status Rows -->
+            <div class="phone-students-list">
+              <!-- Student 01 -->
+              <div id="phoneCard1" class="phone-student-card">
+                <div class="p-student-left">
+                  <div class="p-student-dot" style="background:#1e3a8a;"></div>
+                  <div>
+                    <div class="p-student-name">Student 01</div>
+                    <div id="phoneAct1" class="p-student-act">LOOK_FORWARD</div>
+                  </div>
+                </div>
+                <div class="p-student-right">
+                  <div id="phoneScore1" class="p-student-score">100</div>
+                  <div id="phoneLvl1" class="p-student-lvl level-high">HIGH</div>
+                </div>
+              </div>
+
+              <!-- Student 02 -->
+              <div id="phoneCard2" class="phone-student-card">
+                <div class="p-student-left">
+                  <div class="p-student-dot" style="background:#166534;"></div>
+                  <div>
+                    <div class="p-student-name">Student 02</div>
+                    <div id="phoneAct2" class="p-student-act">READ</div>
+                  </div>
+                </div>
+                <div class="p-student-right">
+                  <div id="phoneScore2" class="p-student-score">85</div>
+                  <div id="phoneLvl2" class="p-student-lvl level-high">HIGH</div>
+                </div>
+              </div>
+
+              <!-- Student 03 -->
+              <div id="phoneCard3" class="phone-student-card">
+                <div class="p-student-left">
+                  <div class="p-student-dot" style="background:#881337;"></div>
+                  <div>
+                    <div class="p-student-name">Student 03</div>
+                    <div id="phoneAct3" class="p-student-act">LOOK_FORWARD</div>
+                  </div>
+                </div>
+                <div class="p-student-right">
+                  <div id="phoneScore3" class="p-student-score">100</div>
+                  <div id="phoneLvl3" class="p-student-lvl level-high">HIGH</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Activity Ticker -->
+            <div class="phone-recent-box">
+              <div class="phone-recent-title">RECENT UPDATE</div>
+              <div id="phoneRecentText" class="phone-recent-msg">All students attentive and engaged.</div>
+            </div>
+          </div>
+          
+          <!-- Home Indicator bar -->
+          <div class="phone-home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 2. TM4C123GH6PM EMBEDDED CONTROLLER & HARDWARE VISUALIZATION      -->
+    <!-- ================================================================= -->
+    <div id="hardwareUnitContainer">
+      <div class="tm4c-pcb-board">
+        <div class="pcb-header">
+          <div class="pcb-chip-label">
+            <span class="ti-logo">TEXAS INSTRUMENTS</span>
+            <span class="tm4c-title">TM4C123GH6PM • ARM Cortex-M4F</span>
+          </div>
+          <div class="pcb-uart-pill">
+            <span class="uart-tx-dot" id="uartTxDot"></span>
+            <span>UART0: <code id="boardUartStr">ENG,95,HIGH,3,0,0</code></span>
+          </div>
+        </div>
+
+        <div class="pcb-main-row">
+          <!-- Physical 16x2 Character LCD -->
+          <div class="lcd-bezel">
+            <div class="lcd-screen">
+              <div class="lcd-line" id="lcdLine1">CLASS: 95 HIGH</div>
+              <div class="lcd-line" id="lcdLine2">F:3  D:0  S:0</div>
+            </div>
+          </div>
+
+          <!-- Physical 4-LED Status Array -->
+          <div class="led-array-panel">
+            <div class="led-item">
+              <div class="physical-led led-white active" id="ledWhite"></div>
+              <span class="led-label">WHITE<br><small>HIGH</small></span>
+            </div>
+            <div class="led-item">
+              <div class="physical-led led-yellow" id="ledYellow"></div>
+              <span class="led-label">YELLOW<br><small>MED</small></span>
+            </div>
+            <div class="led-item">
+              <div class="physical-led led-blue" id="ledBlue"></div>
+              <span class="led-label">BLUE<br><small>LOW</small></span>
+            </div>
+            <div class="led-item">
+              <div class="physical-led led-red" id="ledRed"></div>
+              <span class="led-label">RED<br><small>ALERT</small></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Floating Minimal Control Dock -->
+  <div id="controlDock">
+    <!-- Playback Buttons -->
+    <div class="control-btn-group">
+      <button id="btnPlay" class="dock-btn active" title="Play Simulation">▶ Play</button>
+      <button id="btnPause" class="dock-btn" title="Pause Simulation">⏸ Pause</button>
+      <button id="btnRestart" class="dock-btn" title="Restart Timeline">↻ Restart</button>
+    </div>
+
+    <!-- Speed Multiplier -->
+    <div class="control-btn-group">
+      <select id="speedSelect" class="dock-select" title="Simulation Speed">
+        <option value="0.5">Speed: 0.5x</option>
+        <option value="1.0" selected>Speed: 1x (Normal)</option>
+        <option value="2.0">Speed: 2x</option>
+        <option value="5.0">Speed: 5x</option>
+      </select>
+    </div>
+
+    <!-- Scenario Selector -->
+    <div class="control-btn-group">
+      <select id="scenarioSelect" class="dock-select" title="Classroom Scenario">
+        <option value="classroom_demo" selected>Demo: 90s Capstone (All 8 Behaviors)</option>
+        <option value="distraction_event">Scenario: Distraction & Device Misuse</option>
+        <option value="question_session">Scenario: Interactive Q&A Session</option>
+        <option value="low_engagement">Scenario: Afternoon Fatigue Period</option>
+      </select>
+    </div>
+
+    <!-- Timeline Progress -->
+    <div class="timeline-track">
+      <span id="timeDisplay" class="time-display">00:00 / 01:30</span>
+      <input id="timelineScrubber" type="range" min="0" max="100" value="0" step="0.5">
+    </div>
+
+    <!-- Toggles: Presentation Mode & Fullscreen -->
+    <div class="control-btn-group">
+      <button id="btnPresentation" class="dock-btn" title="Toggle Presentation Mode">👁 Presentation</button>
+      <button id="btnFullscreen" class="dock-btn" title="Toggle Fullscreen">⛶ Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- Load procedural 2.5D simulation script -->
+  <script src="/static/simulation_canvas.js"></script>
+</body>
+</html>

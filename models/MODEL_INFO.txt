@@ -1,0 +1,18 @@
+Model B: Single-Student 8-Class Behavior Classifier
+Architecture: YOLO11s-cls
+Input size: 224x224
+Checkpoint: single_student_8class_v1_cont80/weights/best.pt
+Reported test accuracy: 94.61% on 668 held-out crops
+Reported macro-F1: 0.8736
+
+Classes:
+0 handrise
+1 look_forward
+2 read
+3 sleep
+4 stand
+5 turn_head
+6 using_device
+7 write
+
+Important: this is a behavior classifier, not face recognition.

@@ -1,0 +1,74 @@
+[
+  {
+    "class_id": 0,
+    "class_name": "handrise",
+    "filename": "v2_sample_0_handrise.jpg",
+    "file": "v2_sample_0_handrise.jpg",
+    "url": "/static/samples/v2_sample_0_handrise.jpg",
+    "ground_truth": "handrise",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 1,
+    "class_name": "look_forward",
+    "filename": "v2_sample_1_look_forward.jpg",
+    "file": "v2_sample_1_look_forward.jpg",
+    "url": "/static/samples/v2_sample_1_look_forward.jpg",
+    "ground_truth": "look_forward",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 2,
+    "class_name": "read",
+    "filename": "v2_sample_2_read.jpg",
+    "file": "v2_sample_2_read.jpg",
+    "url": "/static/samples/v2_sample_2_read.jpg",
+    "ground_truth": "read",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 3,
+    "class_name": "sleep",
+    "filename": "v2_sample_3_sleep.jpg",
+    "file": "v2_sample_3_sleep.jpg",
+    "url": "/static/samples/v2_sample_3_sleep.jpg",
+    "ground_truth": "sleep",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 4,
+    "class_name": "stand",
+    "filename": "v2_sample_4_stand.jpg",
+    "file": "v2_sample_4_stand.jpg",
+    "url": "/static/samples/v2_sample_4_stand.jpg",
+    "ground_truth": "stand",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 5,
+    "class_name": "turn_head",
+    "filename": "v2_sample_5_turn_head.jpg",
+    "file": "v2_sample_5_turn_head.jpg",
+    "url": "/static/samples/v2_sample_5_turn_head.jpg",
+    "ground_truth": "turn_head",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 6,
+    "class_name": "using_device",
+    "filename": "v2_sample_6_using_device.jpg",
+    "file": "v2_sample_6_using_device.jpg",
+    "url": "/static/samples/v2_sample_6_using_device.jpg",
+    "ground_truth": "using_device",
+    "dataset": "Held-out real webcam test sample"
+  },
+  {
+    "class_id": 7,
+    "class_name": "write",
+    "filename": "v2_sample_7_write.jpg",
+    "file": "v2_sample_7_write.jpg",
+    "url": "/static/samples/v2_sample_7_write.jpg",
+    "ground_truth": "write",
+    "dataset": "Held-out real webcam test sample"
+  }
+]

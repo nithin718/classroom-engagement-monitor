@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.log
+app_server.log
+.DS_Store
+**/.DS_Store
+.ipynb_checkpoints/
+*.zip
+
+# Entire local data folder (heavy images)
+data/
+
+# Debug images
+debug_samples/
+debug_*.jpg
+debug_*.png
+*.audit.png
+model_b_webcam_v2_audit.png
+
+# Unused models (keep models/Model_B_v2_best.pt)
+yolo11n.pt
+models/yolo11n.pt
+models/best.pt
+runs/
