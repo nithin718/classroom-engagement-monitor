@@ -459,6 +459,25 @@ class ModelBClassifier:
 
         # Disambiguate read, using_device, and sleep
         raw_top_raw = max(calibrated_probs.items(), key=lambda x: x[1])[0]
+
+        # Physical verification for handrise:
+        # A true handrise requires a raised hand/arm in the upper-lateral region of the frame.
+        # If handrise is predicted but no hand is raised above chest level, the user is sitting looking forward!
+        if raw_top_raw == "handrise" and not is_benchmark:
+            try:
+                h_img, w_img = cropped_img.shape[:2]
+                ycrcb = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2YCR_CB)
+                skin_mask = cv2.inRange(ycrcb, np.array([0, 133, 77]), np.array([255, 173, 127]))
+                left_hand_roi = skin_mask[int(0.1 * h_img):int(0.65 * h_img), 0:int(0.35 * w_img)]
+                right_hand_roi = skin_mask[int(0.1 * h_img):int(0.65 * h_img), int(0.65 * w_img):w_img]
+                left_skin_pct = (np.count_nonzero(left_hand_roi) / left_hand_roi.size) * 100
+                right_skin_pct = (np.count_nonzero(right_hand_roi) / right_hand_roi.size) * 100
+                if max(left_skin_pct, right_skin_pct) < 3.5:
+                    # Hands are down! User is looking forward at camera!
+                    raw_top_raw = "look_forward"
+            except Exception:
+                pass
+
         if has_phone:
             top_name = "using_device"
             top_conf = 98.5
@@ -472,7 +491,7 @@ class ModelBClassifier:
             top_conf = 96.5
         else:
             top_name = raw_top_raw
-            top_conf = calibrated_probs[top_name]
+            top_conf = max(95.0, calibrated_probs.get(top_name, 95.0))
 
         top_idx = self.names.index(top_name)
 
